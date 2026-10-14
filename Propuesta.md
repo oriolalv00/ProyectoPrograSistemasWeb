@@ -16,16 +16,22 @@
 ## Requerimientos
 
 ## Requerimientos funcionales y no funcionales
-# Funcionales:
+### Funcionales:
 • Permitir el registro, edición y eliminación de proyectos u obras de construcción.
+
 • Asignar y modificar el presupuesto general de cada obra.
+
 • Permitir que los administradores e ingenieros registren los gastos diarios asociados a conceptos específicos de una obra.
+
 • Actualizar el porcentaje de avance físico de cada proyecto.
+
 • Proporcionar una vista exclusiva para que los clientes consulten el estado de su obra, comparando el avance físico con el financiero.
 
-# No funcionales (cómo funcionará el sistema):
+### No funcionales (cómo funcionará el sistema):
 • El backend estará desarrollado en Java con Spring Boot y la base de datos en MySQL.
+
 • Todo el entorno, incluyendo el backend y la base de datos, se ejecutará mediante contenedores Docker.
+
 • El sistema será responsivo y accesible desde navegadores web, con un frontend desarrollado en HTML, CSS y JavaScript.
 
 ## Casos de uso 
