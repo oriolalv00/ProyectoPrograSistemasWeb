@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Servicio de Base de Datos MySQL
+  mysql_db:
+    image: mysql:8.0
+    container_name: mysql_construction_service
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: tu_contrasena_segura
+      MYSQL_DATABASE: db_construction_service
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/esquema.sql:/docker-entrypoint-initdb.d/esquema.sql 
+    networks:
+      - red-construccion
+
+  # Servicio del Backend 
+  backend-service:
+    build: ./backend
+    container_name: backend_construction_service
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql_db:3306/db_construction_service?useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=tu_contrasena_segura
+    depends_on:
+      - mysql_db
+    networks:
+      - red-construccion
+
+volumes:
+  mysql_data:
+
+networks:
+  red-construccion:
+    driver: bridge
