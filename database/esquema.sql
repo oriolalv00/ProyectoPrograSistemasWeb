@@ -39,7 +39,7 @@ CREATE TABLE obra (
     id_obra INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario_cliente INT NOT NULL COMMENT 'Llave foránea al cliente',
     nombre VARCHAR(150) NOT NULL,
-    descripcion   VARCHAR(1000) NOT NULL COMMENT 'Limitado a 1000 chars para proteger memoria temporal'
+    descripcion   VARCHAR(1000) NOT NULL COMMENT 'Limitado a 1000 chars para proteger memoria temporal',
     calle_numero VARCHAR(150) NOT NULL,
     colonia_coto VARCHAR(100),
     ciudad VARCHAR(100) NOT NULL,
