@@ -1,0 +1,32 @@
+# ============================================================================
+# ARCHIVO: .gitignore
+# PROPÓSITO: Indicar a Git qué carpetas y archivos debe ignorar por completo
+# para que el repositorio solo contenga código fuente limpio y portable.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. COMPILADOS DE JAVA Y MAVEN
+# '**/target/' ignora la carpeta target en cualquier subdirectorio (backend/).
+# Cada desarrollador genera sus propios .class localmente al presionar Run.
+# ----------------------------------------------------------------------------
+**/target/
+*.jar
+*.war
+*.class
+
+# ----------------------------------------------------------------------------
+# 2. CONFIGURACIÓN LOCAL DE IDEs (IntelliJ IDEA y VS Code)
+# Guarda rutas de tu disco duro (ej. C:\Users\ender\.jdks) que no existen
+# en la computadora de Oriol.
+# ----------------------------------------------------------------------------
+.idea/
+*.iml
+.vscode/
+
+# ----------------------------------------------------------------------------
+# 3. ARCHIVOS TEMPORALES DEL SISTEMA OPERATIVO Y VARIABLES DE ENTORNO
+# ----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.env
+*.log
