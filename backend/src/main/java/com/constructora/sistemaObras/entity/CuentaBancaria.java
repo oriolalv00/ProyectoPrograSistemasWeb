@@ -2,6 +2,8 @@ package com.constructora.sistemaObras.entity;
 
 import jakarta.persistence.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "cuenta_bancaria")
 public class CuentaBancaria {
@@ -55,5 +57,13 @@ public class CuentaBancaria {
 
     public void setIsActiva(Boolean isActiva) {
         this.isActiva = isActiva;
+    }
+
+    public <E> List<E> getSaldoActual() {
+        return null;
+    }
+
+    public void setSaldoActual(boolean add) {
+        
     }
 }

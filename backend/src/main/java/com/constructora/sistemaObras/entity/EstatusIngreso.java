@@ -4,5 +4,5 @@ package com.constructora.sistemaObras.entity;
 public enum EstatusIngreso {
     PENDIENTE,
     CONCILIADO,
-    CANCELADO
+    CONFIRMADO, CANCELADO
 }

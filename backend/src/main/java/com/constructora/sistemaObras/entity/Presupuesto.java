@@ -13,8 +13,8 @@ public class Presupuesto {
     @Column(name = "id_presupuesto")
     private Integer idPresupuesto;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_obra", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_obra", nullable = false)
     private Obra obra;
 
     @Column(name = "monto_total", nullable = false, precision = 15, scale = 2)
@@ -24,8 +24,8 @@ public class Presupuesto {
     private LocalDate fechaAprobacion;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estatus", columnDefinition = "ENUM('BORRADOR','APROBADO','MODIFICADO')")
-    private EstatusPresupuesto estatus = EstatusPresupuesto.BORRADOR;
+    @Column(name = "estatus", nullable = false)
+    private EstatusPresupuesto estatus;
 
     public Presupuesto() {
     }

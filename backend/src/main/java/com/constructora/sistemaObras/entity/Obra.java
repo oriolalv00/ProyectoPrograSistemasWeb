@@ -34,8 +34,9 @@ public class Obra {
     @Column(name = "municipio", nullable = false, length = 100)
     private String municipio;
 
-    @Column(name = "estado", nullable = false, length = 50)
-    private String estado = "Aguascalientes";
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", nullable = false)
+    private EstadoObra estado;
 
     @Column(name = "codigo_postal", nullable = false, length = 10)
     private String codigoPostal;
@@ -117,11 +118,9 @@ public class Obra {
         this.municipio = municipio;
     }
 
-    public String getEstado() {
-        return estado;
-    }
+    public EstadoObra getEstado() { return estado; }
 
-    public void setEstado(String estado) {
+    public void setEstado(EstadoObra estado) {
         this.estado = estado;
     }
 
