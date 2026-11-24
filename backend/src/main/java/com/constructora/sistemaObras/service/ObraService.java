@@ -21,8 +21,8 @@ public class ObraService {
         return obraRepository.findAll();
     }
 
-    public List<Obra> listarPorEstado(EstadoObra estado) {
-        return obraRepository.findByEstado(estado);
+    public List<Obra> listarPorEstado(EstadoObra estatus) {
+        return obraRepository.findByEstatus(estatus);
     }
 
     public Obra obtenerPorId(Integer id) {
@@ -32,16 +32,16 @@ public class ObraService {
 
     @Transactional
     public Obra crearObra(Obra obra) {
-        if (obra.getEstado() == null) {
-            obra.setEstado(EstadoObra.ACTIVA);
+        if (obra.getEstatus() == null) {
+            obra.setEstatus(EstadoObra.ACTIVA);
         }
         return obraRepository.save(obra);
     }
 
     @Transactional
-    public Obra cambiarEstado(Integer id, EstadoObra nuevoEstado) {
+    public Obra cambiarEstado(Integer id, EstadoObra nuevoEstatus) {
         Obra obra = obtenerPorId(id);
-        obra.setEstado(nuevoEstado);
+        obra.setEstatus(nuevoEstatus);
         return obraRepository.save(obra);
     }
 }

@@ -50,15 +50,15 @@ public class IngresoService {
 
         ingreso.setPresupuesto(presupuesto);
         ingreso.setCuentaBancaria(cuenta);
-        if (ingreso.getEstatus() == null) {
-            ingreso.setEstatus(EstatusIngreso.PENDIENTE);
-        }
+        ingreso.setEstatus(EstatusIngreso.PENDIENTE);
+        return ingresoRepository.save(ingreso);
+    }
 
-        if (ingreso.getEstatus() == EstatusIngreso.CONFIRMADO) {
-            cuenta.setSaldoActual(cuenta.getSaldoActual().add(ingreso.getMonto()));
-            cuentaBancariaRepository.save(cuenta);
-        }
-
+    @Transactional
+    public Ingreso cambiarEstatus(Integer idIngreso, EstatusIngreso nuevoEstatus) {
+        Ingreso ingreso = ingresoRepository.findById(idIngreso)
+                .orElseThrow(() -> new RuntimeException("Ingreso no encontrado con ID: " + idIngreso));
+        ingreso.setEstatus(nuevoEstatus);
         return ingresoRepository.save(ingreso);
     }
 }
