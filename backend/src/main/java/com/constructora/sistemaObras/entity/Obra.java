@@ -117,13 +117,9 @@ public class Obra {
         this.municipio = municipio;
     }
 
-    public String getEstado() {
-        return estado;
-    }
+    public String getEstado() { return estado; }
 
-    public void setEstado(String estado) {
-        this.estado = estado;
-    }
+    public void setEstado(String estado) { this.estado = estado; }
 
     public String getCodigoPostal() {
         return codigoPostal;
@@ -149,11 +145,7 @@ public class Obra {
         this.fechaFinEstimada = fechaFinEstimada;
     }
 
-    public EstadoObra getEstatus() {
-        return estatus;
-    }
+    public EstadoObra getEstatus() { return estatus; }
 
-    public void setEstatus(EstadoObra estatus) {
-        this.estatus = estatus;
-    }
+    public void setEstatus(EstadoObra estatus) { this.estatus = estatus; }
 }

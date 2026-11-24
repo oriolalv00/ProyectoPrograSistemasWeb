@@ -9,6 +9,5 @@ import java.util.List;
 
 @Repository
 public interface ObraRepository extends JpaRepository<Obra, Integer> {
-    List<Obra> findByEstado(EstadoObra estado);
-    List<Obra> findByResponsableIdUsuario(Integer idUsuario);
+    List<Obra> findByEstatus(EstadoObra estatus);
 }
