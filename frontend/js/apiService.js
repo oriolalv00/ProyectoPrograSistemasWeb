@@ -1,10 +1,7 @@
-/**
- * ============================================================================
- * ARCHIVO: frontend/js/apiService.js
- * PROPÓSITO: Capa intermedia de comunicación de datos (Patrón Adaptador).
- * FUNCIONAMIENTO:
- * - Hoy (Fases 1 a 5): Lee/escribe en 'mockDB' devolviendo Promesas asíncronas.
 
+ * ============================================================================
+ //* ARCHIVO: frontend/js/apiService.js
+ //* PROPÓSITO: Capa intermedia de comunicación de datos (Patrón Adaptador).
 
 // Importamos nuestra base de datos simulada desde el archivo vecino.
 import { mockDB } from "./mockData.js";
@@ -12,15 +9,16 @@ import { mockDB } from "./mockData.js";
 // URL base donde correrá el microservicio de Spring Boot en la Fase 6.
 const API_BASE_URL = "http://localhost:8080/api";
 
-/**
- * Simula una petición HTTP real hacia el servidor:
- * 1. Espera 250 milisegundos (setTimeout) para imitar la latencia de red.
- * 2. Clona los datos (structuredClone) para que la pantalla reciba una copia
- *    limpia e independiente, exactamente igual a como funciona response.json().
- *
- * @param {any} data - Los datos que se van a entregar al resolver la Promesa.
- * @returns {Promise<any>} Una Promesa que se cumple después de 250ms.
- */
+//*
+ //* Simula una petición HTTP real hacia el servidor:
+// * 1. Espera 250 milisegundos (setTimeout) para imitar la latencia de red.
+ //* 2. Clona los datos (structuredClone) para que la pantalla reciba una copia
+ //*    limpia e independiente, exactamente igual a como funciona response.json().
+ //*
+ //* @param {any} data - Los datos que se van a entregar al resolver la Promesa.
+ //* @returns {Promise<any>} Una Promesa que se cumple después de 250ms.
+
+
 function simularPeticionHttp(data) {
   return new Promise((resolve) => {
     setTimeout(() => {

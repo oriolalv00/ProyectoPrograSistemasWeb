@@ -46,7 +46,7 @@ public class PresupuestoService {
 
         presupuesto.setObra(obra);
         if (presupuesto.getEstatus() == null) {
-            presupuesto.setEstatus(EstatusPresupuesto.VIGENTE);
+            presupuesto.setEstatus(EstatusPresupuesto.BORRADOR);
         }
         return presupuestoRepository.save(presupuesto);
     }
