@@ -1,42 +1,25 @@
-<!-- Declaración obligatoria que indica al navegador que este documento usa el estándar HTML5 -->
 <!DOCTYPE html>
-<!-- Atributo lang="es" para accesibilidad (lectores de pantalla) y motores de búsqueda -->
 <html lang="es">
 
 <head>
-    <!-- Define la codificación de caracteres UTF-8 para mostrar acentos y la letra ñ correctamente -->
     <meta charset="UTF-8" />
-    <!-- Etiqueta esencial para diseño responsivo: ajusta el ancho de la página al ancho real del dispositivo -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Título que aparece en la pestaña del navegador -->
     <title>Sistema de Administración de Obras | Constructora</title>
-    <!-- Enlace a nuestra hoja de estilos local en CSS3 puro -->
     <link rel="stylesheet" href="css/styles.css" />
 </head>
 
 <body>
-<!-- ========================================================================
-     ENCABEZADO GLOBAL (HEADER)
-     Permanece visible en toda la aplicación para identificar el sistema,
-     el usuario activo y permitir cerrar sesión.
-     ======================================================================== -->
 <header class="app-header">
     <div class="header-brand">
         <span class="brand-badge">ERP</span>
         <h1>Gestión de Obras y Presupuestos</h1>
     </div>
 
-    <!-- Contenedor donde app.js inyectará dinámicamente el nombre, rol y botón de salir -->
     <div id="user-session-info" class="header-session">
         <span class="session-placeholder">Sin sesión iniciada</span>
     </div>
 </header>
 
-<!-- ========================================================================
-     BARRA DE NAVEGACIÓN PRINCIPAL (NAV)
-     Oculta por defecto (clase 'hidden') hasta que el usuario inicie sesión en Fase 2.
-     Cada botón usa el atributo personalizado 'data-view' para indicar qué sección mostrar.
-     ======================================================================== -->
 <nav id="main-nav" class="app-nav hidden" aria-label="Navegación principal">
     <button type="button" class="nav-btn active" data-view="view-dashboard">Tablero General</button>
     <button type="button" class="nav-btn" data-view="view-obras">Obras y Presupuestos</button>
@@ -45,48 +28,42 @@
     <button type="button" class="nav-btn" data-view="view-admin">Usuarios y Cuentas</button>
 </nav>
 
-<!-- ========================================================================
-     CONTENEDOR PRINCIPAL DE VISTAS (MAIN)
-     Funciona como una SPA (Single Page Application): todas las vistas viven aquí,
-     pero solo una está visible a la vez quitando o poniendo la clase 'hidden'.
-     ======================================================================== -->
 <main class="app-container">
 
-    <!-- VISTA 0: Inicio de Sesión (Visible al arrancar la aplicación) -->
+    <!-- VISTA 0: Inicio de Sesión -->
     <section id="view-login" class="view-section">
         <div class="card login-card">
             <h2>Iniciar Sesión</h2>
             <p class="text-muted">Ingresa tu correo corporativo o de cliente registrado.</p>
-            <!-- Aquí construiremos el formulario de login en la Fase 2 -->
             <div id="login-mount"></div>
         </div>
     </section>
 
-    <!-- VISTA 1: Tablero Resumen Financiero (Fase 5) -->
+    <!-- VISTA 1: Tablero Resumen Financiero -->
     <section id="view-dashboard" class="view-section hidden">
         <h2>Resumen Ejecutivo de Obras</h2>
         <div id="dashboard-mount"></div>
     </section>
 
-    <!-- VISTA 2: Catálogo de Obras y Presupuesto 1:1 (Fase 3) -->
+    <!-- VISTA 2: Catálogo de Obras y Presupuesto 1:1 -->
     <section id="view-obras" class="view-section hidden">
         <h2>Catálogo de Obras y Presupuestos</h2>
         <div id="obras-mount"></div>
     </section>
 
-    <!-- VISTA 3: Control de Egresos / Gastos (Fase 4) -->
+    <!-- VISTA 3: Control de Egresos / Gastos -->
     <section id="view-gastos" class="view-section hidden">
         <h2>Registro y Aprobación de Gastos</h2>
         <div id="gastos-mount"></div>
     </section>
 
-    <!-- VISTA 4: Control de Depósitos / Ingresos (Fase 4) -->
+    <!-- VISTA 4: Control de Depósitos / Ingresos -->
     <section id="view-ingresos" class="view-section hidden">
         <h2>Registro y Conciliación de Ingresos</h2>
         <div id="ingresos-mount"></div>
     </section>
 
-    <!-- VISTA 5: Administración de Usuarios, Roles y Cuentas Bancarias (Fase 2) -->
+    <!-- VISTA 5: Administración de Usuarios, Roles y Cuentas Bancarias -->
     <section id="view-admin" class="view-section hidden">
         <h2>Usuarios y Cuentas Bancarias</h2>
         <div id="admin-mount"></div>
@@ -94,124 +71,10 @@
 
 </main>
 
-<!-- ========================================================================
-     PIE DE PÁGINA (FOOTER)
-     ======================================================================== -->
 <footer class="app-footer">
     <p>Sistema de Administración de Constructora &copy; 2026 &mdash; API REST Spring Boot</p>
 </footer>
 
-<!-- Cargamos app.js al final del body para garantizar que todo el HTML ya exista en el DOM.
-     El atributo type="module" habilita el uso de 'import' y 'export' nativos en JavaScript. -->
-<script type="module" src="js/app.js"></script>
-</body>
-
-</html>
-<!-- Declaración obligatoria que indica al navegador que este documento usa el estándar HTML5 -->
-<!DOCTYPE html>
-<!-- Atributo lang="es" para accesibilidad (lectores de pantalla) y motores de búsqueda -->
-<html lang="es">
-
-<head>
-    <!-- Define la codificación de caracteres UTF-8 para mostrar acentos y la letra ñ correctamente -->
-    <meta charset="UTF-8" />
-    <!-- Etiqueta esencial para diseño responsivo: ajusta el ancho de la página al ancho real del dispositivo -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Título que aparece en la pestaña del navegador -->
-    <title>Sistema de Administración de Obras | Constructora</title>
-    <!-- Enlace a nuestra hoja de estilos local en CSS3 puro -->
-    <link rel="stylesheet" href="css/styles.css" />
-</head>
-
-<body>
-<!-- ========================================================================
-     ENCABEZADO GLOBAL (HEADER)
-     Permanece visible en toda la aplicación para identificar el sistema,
-     el usuario activo y permitir cerrar sesión.
-     ======================================================================== -->
-<header class="app-header">
-    <div class="header-brand">
-        <span class="brand-badge">ERP</span>
-        <h1>Gestión de Obras y Presupuestos</h1>
-    </div>
-
-    <!-- Contenedor donde app.js inyectará dinámicamente el nombre, rol y botón de salir -->
-    <div id="user-session-info" class="header-session">
-        <span class="session-placeholder">Sin sesión iniciada</span>
-    </div>
-</header>
-
-<!-- ========================================================================
-     BARRA DE NAVEGACIÓN PRINCIPAL (NAV)
-     Oculta por defecto (clase 'hidden') hasta que el usuario inicie sesión en Fase 2.
-     Cada botón usa el atributo personalizado 'data-view' para indicar qué sección mostrar.
-     ======================================================================== -->
-<nav id="main-nav" class="app-nav hidden" aria-label="Navegación principal">
-    <button type="button" class="nav-btn active" data-view="view-dashboard">Tablero General</button>
-    <button type="button" class="nav-btn" data-view="view-obras">Obras y Presupuestos</button>
-    <button type="button" class="nav-btn" data-view="view-gastos">Gastos</button>
-    <button type="button" class="nav-btn" data-view="view-ingresos">Ingresos</button>
-    <button type="button" class="nav-btn" data-view="view-admin">Usuarios y Cuentas</button>
-</nav>
-
-<!-- ========================================================================
-     CONTENEDOR PRINCIPAL DE VISTAS (MAIN)
-     Funciona como una SPA (Single Page Application): todas las vistas viven aquí,
-     pero solo una está visible a la vez quitando o poniendo la clase 'hidden'.
-     ======================================================================== -->
-<main class="app-container">
-
-    <!-- VISTA 0: Inicio de Sesión (Visible al arrancar la aplicación) -->
-    <section id="view-login" class="view-section">
-        <div class="card login-card">
-            <h2>Iniciar Sesión</h2>
-            <p class="text-muted">Ingresa tu correo corporativo o de cliente registrado.</p>
-            <!-- Aquí construiremos el formulario de login en la Fase 2 -->
-            <div id="login-mount"></div>
-        </div>
-    </section>
-
-    <!-- VISTA 1: Tablero Resumen Financiero (Fase 5) -->
-    <section id="view-dashboard" class="view-section hidden">
-        <h2>Resumen Ejecutivo de Obras</h2>
-        <div id="dashboard-mount"></div>
-    </section>
-
-    <!-- VISTA 2: Catálogo de Obras y Presupuesto 1:1 (Fase 3) -->
-    <section id="view-obras" class="view-section hidden">
-        <h2>Catálogo de Obras y Presupuestos</h2>
-        <div id="obras-mount"></div>
-    </section>
-
-    <!-- VISTA 3: Control de Egresos / Gastos (Fase 4) -->
-    <section id="view-gastos" class="view-section hidden">
-        <h2>Registro y Aprobación de Gastos</h2>
-        <div id="gastos-mount"></div>
-    </section>
-
-    <!-- VISTA 4: Control de Depósitos / Ingresos (Fase 4) -->
-    <section id="view-ingresos" class="view-section hidden">
-        <h2>Registro y Conciliación de Ingresos</h2>
-        <div id="ingresos-mount"></div>
-    </section>
-
-    <!-- VISTA 5: Administración de Usuarios, Roles y Cuentas Bancarias (Fase 2) -->
-    <section id="view-admin" class="view-section hidden">
-        <h2>Usuarios y Cuentas Bancarias</h2>
-        <div id="admin-mount"></div>
-    </section>
-
-</main>
-
-<!-- ========================================================================
-     PIE DE PÁGINA (FOOTER)
-     ======================================================================== -->
-<footer class="app-footer">
-    <p>Sistema de Administración de Constructora &copy; 2026 &mdash; API REST Spring Boot</p>
-</footer>
-
-<!-- Cargamos app.js al final del body para garantizar que todo el HTML ya exista en el DOM.
-     El atributo type="module" habilita el uso de 'import' y 'export' nativos en JavaScript. -->
 <script type="module" src="js/app.js"></script>
 </body>
 

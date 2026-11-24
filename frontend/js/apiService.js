@@ -1,57 +1,63 @@
 /**
  * ============================================================================
  * ARCHIVO: frontend/js/apiService.js
- * PROPÓSITO: Capa intermedia de comunicación de datos (Patrón Adaptador).
- * FUNCIONAMIENTO:
- * - Hoy (Fases 1 a 5): Lee/escribe en 'mockDB' devolviendo Promesas asíncronas.
+ * PROPÓSITO: Capa de comunicación híbrida.
+ * - Intenta conectar primero con Spring Boot (http://localhost:8080/api)
+ *   para Obras, Presupuestos, Gastos e Ingresos.
+ * - Si el servidor está apagado o el endpoint aún no existe (Usuarios, Roles,
+ *   Cuentas Bancarias), responde automáticamente usando mockDB.
+ * ============================================================================
+ */
 
-
-// Importamos nuestra base de datos simulada desde el archivo vecino.
 import { mockDB } from "./mockData.js";
 
-// URL base donde correrá el microservicio de Spring Boot en la Fase 6.
 const API_BASE_URL = "http://localhost:8080/api";
 
-/**
- * Simula una petición HTTP real hacia el servidor:
- * 1. Espera 250 milisegundos (setTimeout) para imitar la latencia de red.
- * 2. Clona los datos (structuredClone) para que la pantalla reciba una copia
- *    limpia e independiente, exactamente igual a como funciona response.json().
- *
- * @param {any} data - Los datos que se van a entregar al resolver la Promesa.
- * @returns {Promise<any>} Una Promesa que se cumple después de 250ms.
- */
 function simularPeticionHttp(data) {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve(structuredClone(data));
-    }, 250);
+    }, 150);
   });
 }
 
-// Exportamos el objeto 'apiService' con todos los métodos organizados por tabla.
+async function fetchBackend(endpoint, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    ...options
+  });
+
+  if (!response.ok) {
+    let mensaje = `Error HTTP ${response.status}`;
+    try {
+      const body = await response.json();
+      mensaje = body.message || body.error || mensaje;
+    } catch (_) {
+      const text = await response.text();
+      if (text) mensaje = text;
+    }
+    throw new Error(mensaje);
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
 export const apiService = {
-
   // ==========================================================================
-  // 1. MÓDULO: AUTENTICACIÓN Y USUARIOS (Tablas: usuario, rol)
+  // 1. AUTENTICACIÓN Y USUARIOS (Respaldado por mockDB hasta que exista endpoint)
   // ==========================================================================
-
-  /**
-   * Busca un usuario activo por su correo electrónico para iniciar sesión.
-   * Futuro endpoint Fase 6: POST ${API_BASE_URL}/auth/login
-   */
   async login(correo) {
-    // .find() recorre el arreglo y devuelve el primer elemento que cumpla la condición
     const usuarioEncontrado = mockDB.usuarios.find(
-      (u) => u.correo.toLowerCase() === correo.trim().toLowerCase()
+        (u) => u.correo.toLowerCase() === correo.trim().toLowerCase()
     );
 
-    // Al lanzar 'throw new Error' dentro de una función 'async', la Promesa
-    // pasa automáticamente a estado rechazado (se captura con try/catch en app.js).
     if (!usuarioEncontrado) {
       throw new Error("No existe ningún usuario registrado con ese correo.");
     }
-
     if (!usuarioEncontrado.isActivo) {
       throw new Error("Esta cuenta de usuario se encuentra desactivada.");
     }
@@ -59,24 +65,18 @@ export const apiService = {
     return simularPeticionHttp(usuarioEncontrado);
   },
 
-  /**
-   * Devuelve la lista completa de usuarios registrados.
-   * Futuro endpoint Fase 6: GET ${API_BASE_URL}/usuarios
-   */
   async getUsuarios() {
-    return simularPeticionHttp(mockDB.usuarios);
+    try {
+      return await fetchBackend("/usuarios");
+    } catch (_) {
+      return simularPeticionHttp(mockDB.usuarios);
+    }
   },
 
-  /**
-   * Registra un nuevo usuario validando campos obligatorios y RFC de 13 caracteres.
-   * Futuro endpoint Fase 6: POST ${API_BASE_URL}/usuarios
-   */
   async crearUsuario(datosUsuario) {
     if (!datosUsuario.nombre || !datosUsuario.apellidoPaterno || !datosUsuario.correo) {
       throw new Error("Nombre, apellido paterno y correo son obligatorios.");
     }
-
-    // Validación estricta de RFC (13 caracteres)
     if (!datosUsuario.rfc || datosUsuario.rfc.trim().length !== 13) {
       throw new Error("El RFC debe tener exactamente 13 caracteres.");
     }
@@ -87,7 +87,7 @@ export const apiService = {
     }
 
     const nuevoUsuario = {
-      idUsuario: Date.now(), // Genera un ID numérico único basado en la marca de tiempo actual
+      idUsuario: Date.now(),
       rol: { idRol: rolObj.idRol, nombre: rolObj.nombre },
       nombre: datosUsuario.nombre.trim(),
       apellidoPaterno: datosUsuario.apellidoPaterno.trim(),
@@ -98,31 +98,32 @@ export const apiService = {
       isActivo: true
     };
 
-    mockDB.usuarios.push(nuevoUsuario);
-    return simularPeticionHttp(nuevoUsuario);
+    try {
+      return await fetchBackend("/usuarios", {
+        method: "POST",
+        body: JSON.stringify(nuevoUsuario)
+      });
+    } catch (_) {
+      mockDB.usuarios.push(nuevoUsuario);
+      return simularPeticionHttp(nuevoUsuario);
+    }
   },
 
   // ==========================================================================
-  // 2. MÓDULO: CUENTAS BANCARIAS (Tabla: cuenta_bancaria)
+  // 2. CUENTAS BANCARIAS
   // ==========================================================================
-
-  /**
-   * Obtiene las cuentas bancarias registradas de la constructora.
-   * Futuro endpoint Fase 6: GET ${API_BASE_URL}/cuentas-bancarias
-   */
   async getCuentasBancarias() {
-    return simularPeticionHttp(mockDB.cuentasBancarias);
+    try {
+      return await fetchBackend("/cuentas-bancarias");
+    } catch (_) {
+      return simularPeticionHttp(mockDB.cuentasBancarias);
+    }
   },
 
-  /**
-   * Da de alta una cuenta bancaria nueva (necesaria para asociar ingresos).
-   * Futuro endpoint Fase 6: POST ${API_BASE_URL}/cuentas-bancarias
-   */
   async crearCuentaBancaria(datosCuenta) {
     if (!datosCuenta.banco || !datosCuenta.numeroCuenta || !datosCuenta.clabe || !datosCuenta.titular) {
       throw new Error("Todos los datos de la cuenta bancaria son obligatorios.");
     }
-
     if (datosCuenta.clabe.trim().length !== 18) {
       throw new Error("La CLABE interbancaria debe contener exactamente 18 dígitos.");
     }
@@ -133,30 +134,32 @@ export const apiService = {
       numeroCuenta: datosCuenta.numeroCuenta.trim(),
       clabe: datosCuenta.clabe.trim(),
       titular: datosCuenta.titular.trim(),
+      saldoActual: Number(datosCuenta.saldoActual || 0),
       isActivo: true
     };
 
-    mockDB.cuentasBancarias.push(nuevaCuenta);
-    return simularPeticionHttp(nuevaCuenta);
+    try {
+      return await fetchBackend("/cuentas-bancarias", {
+        method: "POST",
+        body: JSON.stringify(nuevaCuenta)
+      });
+    } catch (_) {
+      mockDB.cuentasBancarias.push(nuevaCuenta);
+      return simularPeticionHttp(nuevaCuenta);
+    }
   },
 
   // ==========================================================================
-  // 3. MÓDULO: OBRAS (Tabla: obra)
+  // 3. OBRAS -> GET /api/obras | POST /api/obras | PATCH /api/obras/{id}/estado
   // ==========================================================================
-
-  /**
-   * Obtiene todas las obras registradas.
-   * Futuro endpoint Fase 6: GET ${API_BASE_URL}/obras
-   */
   async getObras() {
-    return simularPeticionHttp(mockDB.obras);
+    try {
+      return await fetchBackend("/obras");
+    } catch (_) {
+      return simularPeticionHttp(mockDB.obras);
+    }
   },
 
-  /**
-   * Crea una nueva obra respetando el esquema real (sin monto directo).
-   * Valida que la fecha de fin estimada no sea anterior a la fecha de inicio.
-   * Futuro endpoint Fase 6: POST ${API_BASE_URL}/obras
-   */
   async crearObra(datosObra) {
     if (!datosObra.nombre || !datosObra.descripcion || !datosObra.calleNumero ||
         !datosObra.ciudad || !datosObra.municipio || !datosObra.codigoPostal ||
@@ -164,260 +167,258 @@ export const apiService = {
       throw new Error("Completa todos los campos obligatorios de la obra.");
     }
 
-    // Como las fechas vienen en formato ISO 'YYYY-MM-DD', se pueden comparar directamente
     if (datosObra.fechaFinEstimada < datosObra.fechaInicio) {
       throw new Error("La fecha de fin estimada no puede ser anterior a la fecha de inicio.");
     }
 
     const cliente = mockDB.usuarios.find(
-      (u) => u.idUsuario === Number(datosObra.idUsuarioCliente)
+        (u) => u.idUsuario === Number(datosObra.idUsuarioCliente)
     );
-    if (!cliente) {
-      throw new Error("Debes asignar un cliente válido a la obra.");
-    }
 
-    const nuevaObra = {
-      idObra: Date.now(),
-      usuarioCliente: {
-        idUsuario: cliente.idUsuario,
-        nombre: cliente.nombre,
-        apellidoPaterno: cliente.apellidoPaterno,
-        rfc: cliente.rfc
-      },
+    const payloadBackend = {
+      usuarioCliente: cliente ? { idUsuario: cliente.idUsuario } : null,
       nombre: datosObra.nombre.trim(),
       descripcion: datosObra.descripcion.trim(),
       calleNumero: datosObra.calleNumero.trim(),
       coloniaCoto: datosObra.coloniaCoto ? datosObra.coloniaCoto.trim() : null,
       ciudad: datosObra.ciudad.trim(),
       municipio: datosObra.municipio.trim(),
-      estado: datosObra.estado ? datosObra.estado.trim() : "Aguascalientes",
+      estado: datosObra.estado || "ACTIVA",
       codigoPostal: datosObra.codigoPostal.trim(),
       fechaInicio: datosObra.fechaInicio,
-      fechaFinEstimada: datosObra.fechaFinEstimada,
-      estatus: "EN_PLANIFICACION" // Valor por defecto en MySQL
+      fechaFinEstimada: datosObra.fechaFinEstimada
     };
 
-    mockDB.obras.push(nuevaObra);
-    return simularPeticionHttp(nuevaObra);
-  },
-
-  /**
-   * Cambia el estatus operativo de una obra (ENUM EstadoObra).
-   * Futuro endpoint Fase 6: PATCH ${API_BASE_URL}/obras/${idObra}/estatus
-   */
-  async actualizarEstatusObra(idObra, nuevoEstatus) {
-    const obra = mockDB.obras.find((o) => o.idObra === Number(idObra));
-    if (!obra) {
-      throw new Error("Obra no encontrada.");
+    try {
+      return await fetchBackend("/obras", {
+        method: "POST",
+        body: JSON.stringify(payloadBackend)
+      });
+    } catch (_) {
+      const nuevaObraMock = {
+        ...payloadBackend,
+        idObra: Date.now(),
+        usuarioCliente: cliente || { idUsuario: 3, nombre: "Cliente", apellidoPaterno: "Demo", rfc: "XAXX010101000" }
+      };
+      mockDB.obras.push(nuevaObraMock);
+      return simularPeticionHttp(nuevaObraMock);
     }
-    obra.estatus = nuevoEstatus;
-    return simularPeticionHttp(obra);
+  },
+
+  async actualizarEstatusObra(idObra, nuevoEstado) {
+    try {
+      return await fetchBackend(`/obras/${idObra}/estado?estado=${encodeURIComponent(nuevoEstado)}`, {
+        method: "PATCH"
+      });
+    } catch (_) {
+      const obra = mockDB.obras.find((o) => o.idObra === Number(idObra));
+      if (!obra) throw new Error("Obra no encontrada.");
+      obra.estado = nuevoEstado;
+      return simularPeticionHttp(obra);
+    }
   },
 
   // ==========================================================================
-  // 4. MÓDULO: PRESUPUESTOS (Tabla: presupuesto - Relación 1:1 con obra)
+  // 4. PRESUPUESTOS -> GET /api/presupuestos | POST /api/presupuestos/obra/{id}
   // ==========================================================================
-
-  /**
-   * Obtiene todos los presupuestos.
-   * Futuro endpoint Fase 6: GET ${API_BASE_URL}/presupuestos
-   */
   async getPresupuestos() {
-    return simularPeticionHttp(mockDB.presupuestos);
+    try {
+      return await fetchBackend("/presupuestos");
+    } catch (_) {
+      return simularPeticionHttp(mockDB.presupuestos);
+    }
   },
 
-  /**
-   * Asigna un presupuesto único a una obra (respeta restricción UNIQUE id_obra).
-   * Futuro endpoint Fase 6: POST ${API_BASE_URL}/presupuestos
-   */
   async crearPresupuesto(datosPresupuesto) {
     const idObraNum = Number(datosPresupuesto.idObra);
     const montoNum = Number(datosPresupuesto.montoTotal);
 
+    if (!idObraNum) {
+      throw new Error("Selecciona una obra válida.");
+    }
     if (!montoNum || montoNum <= 0) {
       throw new Error("El monto total del presupuesto debe ser mayor a $0.00.");
     }
 
-    // .some() devuelve true si al menos un elemento cumple la condición.
-    // Garantizamos la relación 1:1 de MySQL (una obra no puede tener 2 presupuestos).
-    const yaTienePresupuesto = mockDB.presupuestos.some((p) => p.obra.idObra === idObraNum);
-    if (yaTienePresupuesto) {
-      throw new Error("Esta obra ya cuenta con un presupuesto asignado (relación 1 a 1).");
-    }
-
-    const obra = mockDB.obras.find((o) => o.idObra === idObraNum);
-    if (!obra) {
-      throw new Error("La obra seleccionada no existe.");
-    }
-
-    const nuevoPresupuesto = {
-      idPresupuesto: Date.now(),
-      obra: { idObra: obra.idObra, nombre: obra.nombre },
+    const payloadBackend = {
       montoTotal: montoNum,
-      fechaAprobacion: null,
-      estatus: "BORRADOR" // Valor por defecto en MySQL
+      fechaAprobacion: datosPresupuesto.fechaAprobacion || new Date().toISOString().split("T")[0],
+      estatus: datosPresupuesto.estatus || "VIGENTE"
     };
 
-    mockDB.presupuestos.push(nuevoPresupuesto);
-    return simularPeticionHttp(nuevoPresupuesto);
-  },
+    try {
+      return await fetchBackend(`/presupuestos/obra/${idObraNum}`, {
+        method: "POST",
+        body: JSON.stringify(payloadBackend)
+      });
+    } catch (err) {
+      // Si el backend respondió con error de negocio real (400/500), lo propagamos
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
 
-  /**
-   * Actualiza el estatus del presupuesto (BORRADOR, APROBADO, MODIFICADO).
-   * Futuro endpoint Fase 6: PATCH ${API_BASE_URL}/presupuestos/${idPresupuesto}/estatus
-   */
-  async actualizarEstatusPresupuesto(idPresupuesto, nuevoEstatus) {
-    const presupuesto = mockDB.presupuestos.find(
-      (p) => p.idPresupuesto === Number(idPresupuesto)
-    );
-    if (!presupuesto) {
-      throw new Error("Presupuesto no encontrado.");
+      const yaTiene = mockDB.presupuestos.some((p) => p.obra.idObra === idObraNum);
+      if (yaTiene) {
+        throw new Error("Esta obra ya cuenta con un presupuesto asignado (relación 1 a 1).");
+      }
+
+      const obra = mockDB.obras.find((o) => o.idObra === idObraNum);
+      if (!obra) throw new Error("La obra seleccionada no existe.");
+
+      const nuevoPresupuesto = {
+        idPresupuesto: Date.now(),
+        obra: { idObra: obra.idObra, nombre: obra.nombre },
+        ...payloadBackend
+      };
+      mockDB.presupuestos.push(nuevoPresupuesto);
+      return simularPeticionHttp(nuevoPresupuesto);
     }
-
-    presupuesto.estatus = nuevoEstatus;
-    // Si pasa a APROBADO y aún no tiene fecha, asignamos la fecha de hoy (YYYY-MM-DD)
-    if (nuevoEstatus === "APROBADO" && !presupuesto.fechaAprobacion) {
-      presupuesto.fechaAprobacion = new Date().toISOString().split("T")[0];
-    }
-
-    return simularPeticionHttp(presupuesto);
   },
 
   // ==========================================================================
-  // 5. MÓDULO: GASTOS (Tabla: gasto - Cuelga de presupuesto)
+  // 5. GASTOS -> GET /api/gastos | POST /api/gastos/presupuesto/{id}
+  //             PATCH /api/gastos/{id}/aprobar | PATCH /api/gastos/{id}/rechazar
   // ==========================================================================
-
-  /**
-   * Obtiene todos los gastos registrados.
-   * Futuro endpoint Fase 6: GET ${API_BASE_URL}/gastos
-   */
   async getGastos() {
-    return simularPeticionHttp(mockDB.gastos);
+    try {
+      return await fetchBackend("/gastos");
+    } catch (_) {
+      return simularPeticionHttp(mockDB.gastos);
+    }
   },
 
-  /**
-   * Registra un egreso vinculado a un presupuesto existente.
-   * Futuro endpoint Fase 6: POST ${API_BASE_URL}/gastos
-   */
   async crearGasto(datosGasto) {
+    const idPresupuestoNum = Number(datosGasto.idPresupuesto);
     const montoNum = Number(datosGasto.monto);
 
     if (!datosGasto.descripcion || !datosGasto.fechaGasto) {
       throw new Error("La descripción y la fecha del gasto son obligatorias.");
     }
-
     if (!montoNum || montoNum <= 0) {
       throw new Error("El monto del gasto debe ser mayor a $0.00.");
     }
 
-    const presupuesto = mockDB.presupuestos.find(
-      (p) => p.idPresupuesto === Number(datosGasto.idPresupuesto)
-    );
-    if (!presupuesto) {
-      throw new Error("Debes seleccionar un presupuesto válido.");
-    }
-
-    const nuevoGasto = {
-      idGasto: Date.now(),
-      presupuesto: {
-        idPresupuesto: presupuesto.idPresupuesto,
-        obra: { ...presupuesto.obra }
-      },
+    const payloadBackend = {
       descripcion: datosGasto.descripcion.trim(),
       monto: montoNum,
-      fechaGasto: datosGasto.fechaGasto,
-      estatusAprobacion: "PENDIENTE" // Valor por defecto en MySQL
+      fechaGasto: datosGasto.fechaGasto
     };
 
-    mockDB.gastos.push(nuevoGasto);
-    return simularPeticionHttp(nuevoGasto);
-  },
+    try {
+      return await fetchBackend(`/gastos/presupuesto/${idPresupuestoNum}`, {
+        method: "POST",
+        body: JSON.stringify(payloadBackend)
+      });
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
 
-  /**
-   * Aprueba o rechaza un gasto (ENUM EstatusAprobacion).
-   * Futuro endpoint Fase 6: PATCH ${API_BASE_URL}/gastos/${idGasto}/estatus
-   */
-  async actualizarEstatusGasto(idGasto, nuevoEstatus) {
-    const gasto = mockDB.gastos.find((g) => g.idGasto === Number(idGasto));
-    if (!gasto) {
-      throw new Error("Gasto no encontrado.");
+      const presupuesto = mockDB.presupuestos.find((p) => p.idPresupuesto === idPresupuestoNum);
+      if (!presupuesto) throw new Error("Debes seleccionar un presupuesto válido.");
+
+      const nuevoGasto = {
+        idGasto: Date.now(),
+        presupuesto: {
+          idPresupuesto: presupuesto.idPresupuesto,
+          obra: { ...presupuesto.obra }
+        },
+        ...payloadBackend,
+        estatusAprobacion: "PENDIENTE"
+      };
+      mockDB.gastos.push(nuevoGasto);
+      return simularPeticionHttp(nuevoGasto);
     }
-    gasto.estatusAprobacion = nuevoEstatus;
-    return simularPeticionHttp(gasto);
+  },
+
+  async aprobarGasto(idGasto) {
+    try {
+      return await fetchBackend(`/gastos/${idGasto}/aprobar`, { method: "PATCH" });
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
+      const gasto = mockDB.gastos.find((g) => g.idGasto === Number(idGasto));
+      if (!gasto) throw new Error("Gasto no encontrado.");
+      gasto.estatusAprobacion = "APROBADO";
+      return simularPeticionHttp(gasto);
+    }
+  },
+
+  async rechazarGasto(idGasto) {
+    try {
+      return await fetchBackend(`/gastos/${idGasto}/rechazar`, { method: "PATCH" });
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
+      const gasto = mockDB.gastos.find((g) => g.idGasto === Number(idGasto));
+      if (!gasto) throw new Error("Gasto no encontrado.");
+      gasto.estatusAprobacion = "RECHAZADO";
+      return simularPeticionHttp(gasto);
+    }
   },
 
   // ==========================================================================
-  // 6. MÓDULO: INGRESOS (Tabla: ingreso - Exige presupuesto Y cuentaBancaria)
+  // 6. INGRESOS -> GET /api/ingresos | POST /api/ingresos?idPresupuesto=&idCuenta=
   // ==========================================================================
-
-  /**
-   * Obtiene todos los ingresos registrados.
-   * Futuro endpoint Fase 6: GET ${API_BASE_URL}/ingresos
-   */
   async getIngresos() {
-    return simularPeticionHttp(mockDB.ingresos);
+    try {
+      return await fetchBackend("/ingresos");
+    } catch (_) {
+      return simularPeticionHttp(mockDB.ingresos);
+    }
   },
 
-  /**
-   * Registra un ingreso vinculando obligatoriamente Presupuesto y CuentaBancaria.
-   * Futuro endpoint Fase 6: POST ${API_BASE_URL}/ingresos
-   */
   async crearIngreso(datosIngreso) {
+    const idPresupuestoNum = Number(datosIngreso.idPresupuesto);
+    const idCuentaNum = Number(datosIngreso.idCuenta);
     const montoNum = Number(datosIngreso.monto);
 
     if (!datosIngreso.fechaDeposito) {
       throw new Error("La fecha de depósito es obligatoria.");
     }
-
     if (!montoNum || montoNum <= 0) {
       throw new Error("El monto del ingreso debe ser mayor a $0.00.");
     }
 
-    const presupuesto = mockDB.presupuestos.find(
-      (p) => p.idPresupuesto === Number(datosIngreso.idPresupuesto)
-    );
-    if (!presupuesto) {
-      throw new Error("Debes seleccionar un presupuesto válido.");
-    }
-
-    const cuenta = mockDB.cuentasBancarias.find(
-      (c) => c.idCuenta === Number(datosIngreso.idCuenta)
-    );
-    if (!cuenta) {
-      throw new Error("Debes seleccionar una cuenta bancaria destino válida.");
-    }
-
-    const nuevoIngreso = {
-      idIngreso: Date.now(),
-      presupuesto: {
-        idPresupuesto: presupuesto.idPresupuesto,
-        obra: { ...presupuesto.obra }
-      },
-      cuentaBancaria: {
-        idCuenta: cuenta.idCuenta,
-        banco: cuenta.banco,
-        numeroCuenta: cuenta.numeroCuenta
-      },
+    const payloadBackend = {
       monto: montoNum,
       fechaDeposito: datosIngreso.fechaDeposito,
       referencia: datosIngreso.referencia ? datosIngreso.referencia.trim() : null,
-      estatus: "PENDIENTE" // Valor por defecto en MySQL
+      estatus: datosIngreso.estatus || "CONFIRMADO"
     };
 
-    mockDB.ingresos.push(nuevoIngreso);
-    return simularPeticionHttp(nuevoIngreso);
-  },
+    try {
+      const query = `?idPresupuesto=${encodeURIComponent(idPresupuestoNum)}&idCuenta=${encodeURIComponent(idCuentaNum)}`;
+      return await fetchBackend(`/ingresos${query}`, {
+        method: "POST",
+        body: JSON.stringify(payloadBackend)
+      });
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
 
-  /**
-   * Concilia o cancela un ingreso (ENUM EstatusIngreso).
-   * Futuro endpoint Fase 6: PATCH ${API_BASE_URL}/ingresos/${idIngreso}/estatus
-   */
-  async actualizarEstatusIngreso(idIngreso, nuevoEstatus) {
-    const ingreso = mockDB.ingresos.find((i) => i.idIngreso === Number(idIngreso));
-    if (!ingreso) {
-      throw new Error("Ingreso no encontrado.");
+      const presupuesto = mockDB.presupuestos.find((p) => p.idPresupuesto === idPresupuestoNum);
+      const cuenta = mockDB.cuentasBancarias.find((c) => c.idCuenta === idCuentaNum);
+      if (!presupuesto || !cuenta) throw new Error("Presupuesto o cuenta bancaria inválidos.");
+
+      const nuevoIngreso = {
+        idIngreso: Date.now(),
+        presupuesto: {
+          idPresupuesto: presupuesto.idPresupuesto,
+          obra: { ...presupuesto.obra }
+        },
+        cuentaBancaria: {
+          idCuenta: cuenta.idCuenta,
+          banco: cuenta.banco,
+          numeroCuenta: cuenta.numeroCuenta
+        },
+        ...payloadBackend
+      };
+      mockDB.ingresos.push(nuevoIngreso);
+      return simularPeticionHttp(nuevoIngreso);
     }
-    ingreso.estatus = nuevoEstatus;
-    return simularPeticionHttp(ingreso);
   }
 };

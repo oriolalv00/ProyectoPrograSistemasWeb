@@ -1,14 +1,4 @@
-
-
-// La palabra reservada 'export' convierte esta constante en un Módulo ES6.
-// Esto permite que 'apiService.js' la importe de forma controlada sin dejar
-// variables sueltas en la memoria global del navegador (window).
 export const mockDB = {
-
-  // --------------------------------------------------------------------------
-  //  1. TABLA: rol Entidad Java: Rol.java)
-  // Define los perfiles de acceso y permisos dentro de la constructora.
-  // --------------------------------------------------------------------------
   roles: [
     {
       idRol: 1,
@@ -27,11 +17,6 @@ export const mockDB = {
     }
   ],
 
-  // --------------------------------------------------------------------------
-  // 2. TABLA: usuario (Entidad  Usuario.java)
-  // - 'rol' es un objeto anidado porque en Java es una relación @ManyToOne.
-  // - 'rfc' tiene exactamente 13 caracteres (regla obligatoria de validación).
-  // --------------------------------------------------------------------------
   usuarios: [
     {
       idUsuario: 1,
@@ -68,10 +53,6 @@ export const mockDB = {
     }
   ],
 
-  // --------------------------------------------------------------------------
-  // 3. TABLA: cuenta_bancaria (Entidad Java: CuentaBancaria.java)
-  // Es requisito obligatorio (FK id_cuenta) para poder registrar un Ingreso.
-  // --------------------------------------------------------------------------
   cuentasBancarias: [
     {
       idCuenta: 1,
@@ -79,6 +60,7 @@ export const mockDB = {
       numeroCuenta: "0119845632",
       clabe: "012010001198456321",
       titular: "Constructora del Centro S.A. de C.V.",
+      saldoActual: 2500000.00,
       isActivo: true
     },
     {
@@ -87,17 +69,11 @@ export const mockDB = {
       numeroCuenta: "0845123987",
       clabe: "072010008451239874",
       titular: "Constructora del Centro S.A. de C.V.",
+      saldoActual: 1450000.00,
       isActivo: true
     }
   ],
 
-  // --------------------------------------------------------------------------
-  // 4. TABLA: obra (Entidad Java: Obra.java)
-  // Validada contra DESCRIBE obra:
-  // - No lleva monto total Ya que ese campo pertenece a la tabla 'presupuesto').
-  // - 'estado' representa la entidad federativa (default 'Aguascalientes').
-  // - 'estatus' usa el ENUM: EN_PLANIFICACION, ACTIVA, PAUSADA, TERMINADA, CANCELADA.
-  // --------------------------------------------------------------------------
   obras: [
     {
       idObra: 101,
@@ -113,11 +89,10 @@ export const mockDB = {
       coloniaCoto: "Coto San Telmo",
       ciudad: "Aguascalientes",
       municipio: "Aguascalientes",
-      estado: "Aguascalientes",
+      estado: "ACTIVA",
       codigoPostal: "20120",
       fechaInicio: "2026-09-01",
-      fechaFinEstimada: "2027-03-30",
-      estatus: "ACTIVA"
+      fechaFinEstimada: "2027-03-30"
     },
     {
       idObra: 102,
@@ -130,22 +105,16 @@ export const mockDB = {
       nombre: "Nave Industrial Parque Logístico Sur",
       descripcion: "Cimentación profunda, estructura metálica y piso de concreto pulido (2,500 m2).",
       calleNumero: "Carretera Panamericana Sur Km 14",
-      coloniaCoto: null, // En MySQL esta columna tiene Null = YES
+      coloniaCoto: null,
       ciudad: "Aguascalientes",
       municipio: "Aguascalientes",
-      estado: "Aguascalientes",
+      estado: "EN_PLANIFICACION",
       codigoPostal: "20340",
       fechaInicio: "2026-12-01",
-      fechaFinEstimada: "2027-06-15",
-      estatus: "EN_PLANIFICACION"
+      fechaFinEstimada: "2027-06-15"
     }
   ],
 
-  // --------------------------------------------------------------------------
-  // 5. TABLA: presupuesto (Entidad Java: Presupuesto.java)
-  // Relación @OneToOne (UNIQUE en id_obra): cada obra tiene 1 solo presupuesto.
-  // ENUM estatus: BORRADOR, APROBADO, MODIFICADO.
-  // --------------------------------------------------------------------------
   presupuestos: [
     {
       idPresupuesto: 201,
@@ -155,7 +124,7 @@ export const mockDB = {
       },
       montoTotal: 4850000.00,
       fechaAprobacion: "2026-08-25",
-      estatus: "APROBADO"
+      estatus: "VIGENTE"
     },
     {
       idPresupuesto: 202,
@@ -164,16 +133,11 @@ export const mockDB = {
         nombre: "Nave Industrial Parque Logístico Sur"
       },
       montoTotal: 8200000.00,
-      fechaAprobacion: null, // Es nulo mientras el presupuesto siga en BORRADOR
+      fechaAprobacion: null,
       estatus: "BORRADOR"
     }
   ],
 
-  // --------------------------------------------------------------------------
-  // 6. TABLA: gasto (Entidad Java: Gasto.java)
-  // Cuelga de 'presupuesto' (FK id_presupuesto).
-  // ENUM estatusAprobacion: PENDIENTE, APROBADO, RECHAZADO.
-  // --------------------------------------------------------------------------
   gastos: [
     {
       idGasto: 301,
@@ -199,11 +163,6 @@ export const mockDB = {
     }
   ],
 
-  // --------------------------------------------------------------------------
-  // 7. TABLA: ingreso (Entidad Java: Ingreso.java)
-  // Doble llave foránea: exige 'presupuesto' (id_presupuesto) y 'cuentaBancaria' (id_cuenta).
-  // ENUM estatus: PENDIENTE, CONCILIADO, CANCELADO.
-  // --------------------------------------------------------------------------
   ingresos: [
     {
       idIngreso: 401,
@@ -219,7 +178,7 @@ export const mockDB = {
       monto: 1940000.00,
       fechaDeposito: "2026-08-28",
       referencia: "SPEI-20260828-ANTICIPO40",
-      estatus: "CONCILIADO"
+      estatus: "CONFIRMADO"
     },
     {
       idIngreso: 402,
