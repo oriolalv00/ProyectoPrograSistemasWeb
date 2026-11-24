@@ -4,75 +4,157 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sistema de Administración de Obras | Constructora</title>
+    <title>CONSTRUCTORA DEL CENTRO | Gestión de Obras y Presupuestos</title>
     <link rel="stylesheet" href="css/styles.css" />
 </head>
 
 <body>
-<header class="app-header">
-    <div class="header-brand">
-        <span class="brand-badge">ERP</span>
-        <h1>Gestión de Obras y Presupuestos</h1>
+<!-- ========================================================================
+     BARRA SUPERIOR CORPORATIVA (TOP BAR)
+     ======================================================================== -->
+<div class="top-bar">
+    <div class="top-bar-inner">
+        <div class="top-bar-info">
+            <span>&#9670; Aguascalientes, Ags., México</span>
+            <span>&#9200; Lun - Vie: 08:30 - 18:00</span>
+            <span>&#9993; contacto@constructora-ags.mx</span>
+        </div>
+        <div class="top-bar-tag">PORTAL CORPORATIVO &amp; ERP DE OBRA</div>
     </div>
+</div>
 
-    <div id="user-session-info" class="header-session">
-        <span class="session-placeholder">Sin sesión iniciada</span>
+<!-- ========================================================================
+     ENCABEZADO PRINCIPAL CON INICIO DE SESIÓN INTEGRADO
+     ======================================================================== -->
+<header class="app-header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <div class="brand-logo-box" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 9h.01M15 9h.01M9 12h.01M15 12h.01" />
+                </svg>
+            </div>
+            <div>
+                <h1>CONSTRUCTORA <span class="text-amber">DEL CENTRO</span></h1>
+                <span class="brand-subtitle">ARQUITECTURA &bull; INGENIERÍA &bull; CONTROL DE OBRA</span>
+            </div>
+        </div>
+
+        <!-- Aquí app.js inyecta el formulario de Login en la barra o los datos del usuario conectado -->
+        <div id="header-auth-area" class="header-auth-area"></div>
     </div>
 </header>
 
+<!-- ========================================================================
+     BARRA DE NAVEGACIÓN POR ROL (Se muestra al iniciar sesión)
+     ======================================================================== -->
 <nav id="main-nav" class="app-nav hidden" aria-label="Navegación principal">
-    <button type="button" class="nav-btn active" data-view="view-dashboard">Tablero General</button>
-    <button type="button" class="nav-btn" data-view="view-obras">Obras y Presupuestos</button>
-    <button type="button" class="nav-btn" data-view="view-gastos">Gastos</button>
-    <button type="button" class="nav-btn" data-view="view-ingresos">Ingresos</button>
-    <button type="button" class="nav-btn" data-view="view-admin">Usuarios y Cuentas</button>
+    <div class="nav-inner">
+        <button type="button" class="nav-btn active" data-view="view-inicio">Inicio</button>
+        <button type="button" class="nav-btn" data-view="view-dashboard">Tablero General</button>
+        <button type="button" class="nav-btn" data-view="view-obras">Obras y Presupuestos</button>
+        <button type="button" class="nav-btn" data-view="view-gastos">Gastos</button>
+        <button type="button" class="nav-btn" data-view="view-ingresos">Ingresos</button>
+        <button type="button" class="nav-btn" data-view="view-admin">Usuarios y Cuentas</button>
+    </div>
 </nav>
 
-<main class="app-container">
+<!-- ========================================================================
+     CONTENEDOR PRINCIPAL DE VISTAS (SPA)
+     ======================================================================== -->
+<main class="app-main">
 
-    <!-- VISTA 0: Inicio de Sesión -->
-    <section id="view-login" class="view-section">
-        <div class="card login-card">
-            <h2>Iniciar Sesión</h2>
-            <p class="text-muted">Ingresa tu correo corporativo o de cliente registrado.</p>
-            <div id="login-mount"></div>
+    <!-- VISTA PRINCIPAL / PORTADA (Visible antes y después de iniciar sesión) -->
+    <section id="view-inicio" class="view-section hero-section">
+        <div class="hero-overlay">
+            <div class="hero-content">
+                <span class="hero-eyebrow">EXPERTOS EN CONSTRUCCIÓN E INFRAESTRUCTURA</span>
+                <h2 class="hero-title">
+                    CONSTRUIMOS PROYECTOS CON <span class="text-amber">PRECISIÓN FINANCIERA</span>
+                </h2>
+                <p class="hero-description">
+                    Plataforma integral para la supervisión técnica de obra, control presupuestal en tiempo real,
+                    aprobación de egresos y conciliación bancaria de proyectos residenciales e industriales.
+                </p>
+
+                <div id="hero-welcome-banner" class="hero-welcome hidden"></div>
+
+                <div class="hero-pillars">
+                    <div class="pillar-box pillar-dark">
+                        <strong>ARQUITECTURA</strong>
+                        <span>Diseño y planeación ejecutiva</span>
+                    </div>
+                    <div class="pillar-box pillar-amber">
+                        <strong>CONSTRUCCIÓN</strong>
+                        <span>Ejecución de obra civil e industrial</span>
+                    </div>
+                    <div class="pillar-box pillar-charcoal">
+                        <strong>CONTROL ERP</strong>
+                        <span>Trazabilidad de gastos e ingresos</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- VISTA 1: Tablero Resumen Financiero -->
-    <section id="view-dashboard" class="view-section hidden">
-        <h2>Resumen Ejecutivo de Obras</h2>
-        <div id="dashboard-mount"></div>
-    </section>
+    <!-- CONTENEDOR INTERNO PARA MÓDULOS OPERATIVOS -->
+    <div id="internal-container" class="app-container hidden">
+        <!-- VISTA 1: Tablero Resumen Financiero -->
+        <section id="view-dashboard" class="view-section hidden">
+            <div class="section-header-bar">
+                <h2>Resumen Ejecutivo de Obras</h2>
+                <span class="section-tag">INDICADORES EN TIEMPO REAL</span>
+            </div>
+            <div id="dashboard-mount"></div>
+        </section>
 
-    <!-- VISTA 2: Catálogo de Obras y Presupuesto 1:1 -->
-    <section id="view-obras" class="view-section hidden">
-        <h2>Catálogo de Obras y Presupuestos</h2>
-        <div id="obras-mount"></div>
-    </section>
+        <!-- VISTA 2: Catálogo de Obras y Presupuesto 1:1 -->
+        <section id="view-obras" class="view-section hidden">
+            <div class="section-header-bar">
+                <h2>Catálogo de Obras y Presupuestos</h2>
+                <span class="section-tag">PROYECTOS ACTIVOS</span>
+            </div>
+            <div id="obras-mount"></div>
+        </section>
 
-    <!-- VISTA 3: Control de Egresos / Gastos -->
-    <section id="view-gastos" class="view-section hidden">
-        <h2>Registro y Aprobación de Gastos</h2>
-        <div id="gastos-mount"></div>
-    </section>
+        <!-- VISTA 3: Control de Egresos / Gastos -->
+        <section id="view-gastos" class="view-section hidden">
+            <div class="section-header-bar">
+                <h2>Registro y Aprobación de Gastos</h2>
+                <span class="section-tag">CONTROL DE EGRESOS</span>
+            </div>
+            <div id="gastos-mount"></div>
+        </section>
 
-    <!-- VISTA 4: Control de Depósitos / Ingresos -->
-    <section id="view-ingresos" class="view-section hidden">
-        <h2>Registro y Conciliación de Ingresos</h2>
-        <div id="ingresos-mount"></div>
-    </section>
+        <!-- VISTA 4: Control de Depósitos / Ingresos -->
+        <section id="view-ingresos" class="view-section hidden">
+            <div class="section-header-bar">
+                <h2>Registro y Conciliación de Ingresos</h2>
+                <span class="section-tag">TESORERÍA</span>
+            </div>
+            <div id="ingresos-mount"></div>
+        </section>
 
-    <!-- VISTA 5: Administración de Usuarios, Roles y Cuentas Bancarias -->
-    <section id="view-admin" class="view-section hidden">
-        <h2>Usuarios y Cuentas Bancarias</h2>
-        <div id="admin-mount"></div>
-    </section>
+        <!-- VISTA 5: Administración de Usuarios, Roles y Cuentas Bancarias -->
+        <section id="view-admin" class="view-section hidden">
+            <div class="section-header-bar">
+                <h2>Usuarios y Cuentas Bancarias</h2>
+                <span class="section-tag">ADMINISTRACIÓN</span>
+            </div>
+            <div id="admin-mount"></div>
+        </section>
+    </div>
 
 </main>
 
+<!-- ========================================================================
+     PIE DE PÁGINA (FOOTER)
+     ======================================================================== -->
 <footer class="app-footer">
-    <p>Sistema de Administración de Constructora &copy; 2026 &mdash; API REST Spring Boot</p>
+    <div class="footer-inner">
+        <p><strong>CONSTRUCTORA DEL CENTRO S.A. DE C.V.</strong> &copy; 2026 &mdash; Todos los derechos reservados.</p>
+        <p class="footer-sub">Sistema Integral de Administración de Obras &bull; Aguascalientes, México</p>
+    </div>
 </footer>
 
 <script type="module" src="js/app.js"></script>

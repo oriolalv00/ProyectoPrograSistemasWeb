@@ -1,8 +1,8 @@
 /**
  * ============================================================================
  * ARCHIVO: frontend/js/app.js
- * PROPÓSITO: Controlador principal SPA (Login, Roles, Tablero General,
- * Obras y Presupuestos, Gastos, Ingresos y Administración).
+ * PROPÓSITO: Controlador principal SPA con Login en barra superior, portada
+ * corporativa unificada, navegación por rol y detección automática de banco.
  * ============================================================================
  */
 
@@ -65,55 +65,41 @@ document.addEventListener("DOMContentLoaded", () => {
     usuarioActual = JSON.parse(sesionGuardada);
     iniciarInterfazAutenticada();
   } else {
-    renderizarLogin();
+    renderizarLoginEnHeader();
   }
 });
 
 // ============================================================================
-// 1. AUTENTICACIÓN Y NAVEGACIÓN
+// 1. INICIO DE SESIÓN EN LA BARRA SUPERIOR Y CONTROL POR ROL
 // ============================================================================
-function renderizarLogin() {
-  const loginMount = document.getElementById("login-mount");
+function renderizarLoginEnHeader() {
+  const authArea = document.getElementById("header-auth-area");
 
-  loginMount.innerHTML = `
-    <div id="login-feedback"></div>
-
-    <form id="form-login" novalidate>
-      <div class="form-group">
-        <label for="login-correo">Correo Electrónico <span class="required-mark">*</span></label>
-        <input
-          type="email"
-          id="login-correo"
-          class="form-control"
-          placeholder="ej. admin@constructora-ags.mx"
-          required
-        />
-      </div>
-
-      <button type="submit" id="btn-login-submit" class="btn btn-primary" style="width: 100%;">
-        Ingresar al Sistema
+  authArea.innerHTML = `
+    <form id="form-login-header" class="header-login-form" novalidate>
+      <input
+        type="email"
+        id="login-correo"
+        class="header-login-input"
+        placeholder="Correo corporativo o cliente..."
+        required
+      />
+      <button type="submit" id="btn-login-submit" class="btn btn-primary btn-sm">
+        Iniciar Sesión
       </button>
     </form>
 
-    <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--color-niebla-border);">
-      <p class="text-muted" style="margin-bottom: 0.5rem; font-size: 0.82rem;">
-        <strong>Cuentas de prueba (según roles de MySQL):</strong>
-      </p>
-      <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
-        <button type="button" class="btn btn-dark btn-sm btn-demo-login" data-email="admin@constructora-ags.mx">
-          Administrador
-        </button>
-        <button type="button" class="btn btn-dark btn-sm btn-demo-login" data-email="oriol.residente@constructora-ags.mx">
-          Ing. Residente
-        </button>
-        <button type="button" class="btn btn-dark btn-sm btn-demo-login" data-email="cgomez@inmobiliaria-centro.mx">
-          Cliente
-        </button>
-      </div>
+    <div class="header-demo-roles">
+      <span>Acceso rápido:</span>
+      <button type="button" class="btn-role-chip btn-demo-login" data-email="admin@constructora-ags.mx">Admin</button>
+      <button type="button" class="btn-role-chip btn-demo-login" data-email="oriol.residente@constructora-ags.mx">Ing. Residente</button>
+      <button type="button" class="btn-role-chip btn-demo-login" data-email="cgomez@inmobiliaria-centro.mx">Cliente</button>
     </div>
+
+    <div id="login-feedback" class="header-login-error"></div>
   `;
 
-  document.getElementById("form-login").addEventListener("submit", async (evento) => {
+  document.getElementById("form-login-header").addEventListener("submit", async (evento) => {
     evento.preventDefault();
 
     const inputCorreo = document.getElementById("login-correo");
@@ -121,14 +107,14 @@ function renderizarLogin() {
     const btnSubmit = document.getElementById("btn-login-submit");
 
     if (!inputCorreo.value.trim()) {
-      feedback.innerHTML = `<div class="alert alert-error">Por favor, ingresa tu correo electrónico.</div>`;
+      feedback.textContent = "Ingresa un correo electrónico.";
       return;
     }
 
     try {
       btnSubmit.disabled = true;
-      btnSubmit.textContent = "Verificando...";
-      feedback.innerHTML = "";
+      btnSubmit.textContent = "Entrando...";
+      feedback.textContent = "";
 
       const usuario = await apiService.login(inputCorreo.value);
       usuarioActual = usuario;
@@ -136,10 +122,10 @@ function renderizarLogin() {
 
       iniciarInterfazAutenticada();
     } catch (error) {
-      feedback.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+      feedback.textContent = error.message;
     } finally {
       btnSubmit.disabled = false;
-      btnSubmit.textContent = "Ingresar al Sistema";
+      btnSubmit.textContent = "Iniciar Sesión";
     }
   });
 
@@ -151,17 +137,20 @@ function renderizarLogin() {
 }
 
 function iniciarInterfazAutenticada() {
-  document.getElementById("view-login").classList.add("hidden");
-  document.getElementById("main-nav").classList.remove("hidden");
-
-  const sessionInfo = document.getElementById("user-session-info");
-  sessionInfo.innerHTML = `
-    <span class="session-user-tag">${usuarioActual.nombre} ${usuarioActual.apellidoPaterno}</span>
-    <span class="session-role-pill">${usuarioActual.rol.nombre}</span>
-    <button type="button" id="btn-logout" class="btn btn-primary btn-sm">Cerrar Sesión</button>
+  // 1. Reemplazamos el formulario del header por el perfil del usuario activo
+  const authArea = document.getElementById("header-auth-area");
+  authArea.innerHTML = `
+    <div class="header-session-bar">
+      <span class="session-user-tag">${usuarioActual.nombre} ${usuarioActual.apellidoPaterno}</span>
+      <span class="session-role-pill">${usuarioActual.rol.nombre}</span>
+      <button type="button" id="btn-logout" class="btn btn-primary btn-sm">Cerrar Sesión</button>
+    </div>
   `;
 
   document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
+
+  // 2. Mostramos la barra de navegación superior y filtramos pestañas según el Rol
+  document.getElementById("main-nav").classList.remove("hidden");
 
   const rolNombre = usuarioActual.rol.nombre;
   document.querySelectorAll(".nav-btn").forEach((btn) => {
@@ -176,7 +165,22 @@ function iniciarInterfazAutenticada() {
     }
   });
 
-  cambiarVista("view-dashboard");
+  // 3. Mostramos mensaje de bienvenida en la portada y abrimos la página de Inicio
+  const welcomeBanner = document.getElementById("hero-welcome-banner");
+  welcomeBanner.classList.remove("hidden");
+  welcomeBanner.innerHTML = `
+    <div>
+      <strong>Bienvenido, ${usuarioActual.nombre} ${usuarioActual.apellidoPaterno}</strong>
+      <div style="font-size: 0.85rem; color: #cbd5e1;">
+        Sesión activa como <span class="text-amber">${rolNombre}</span>. Selecciona un módulo en la barra superior para operar.
+      </div>
+    </div>
+    <button type="button" id="btn-ir-tablero" class="btn btn-primary btn-sm">Ir al Tablero General</button>
+  `;
+
+  document.getElementById("btn-ir-tablero").addEventListener("click", () => cambiarVista("view-dashboard"));
+
+  cambiarVista("view-inicio");
 }
 
 function cerrarSesion() {
@@ -184,12 +188,10 @@ function cerrarSesion() {
   sessionStorage.removeItem("constructora_usuario");
 
   document.getElementById("main-nav").classList.add("hidden");
-  document.getElementById("user-session-info").innerHTML =
-      `<span class="session-placeholder">Sin sesión iniciada</span>`;
+  document.getElementById("hero-welcome-banner").classList.add("hidden");
 
-  document.querySelectorAll(".view-section").forEach((sec) => sec.classList.add("hidden"));
-  document.getElementById("view-login").classList.remove("hidden");
-  renderizarLogin();
+  renderizarLoginEnHeader();
+  cambiarVista("view-inicio");
 }
 
 function configurarNavegacion() {
@@ -199,14 +201,28 @@ function configurarNavegacion() {
 }
 
 function cambiarVista(idVista) {
-  document.querySelectorAll(".view-section").forEach((seccion) => seccion.classList.add("hidden"));
-
-  const seccionActiva = document.getElementById(idVista);
-  if (seccionActiva) seccionActiva.classList.remove("hidden");
+  const heroInicio = document.getElementById("view-inicio");
+  const internalContainer = document.getElementById("internal-container");
 
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === idVista);
   });
+
+  if (idVista === "view-inicio") {
+    heroInicio.classList.remove("hidden");
+    internalContainer.classList.add("hidden");
+    return;
+  }
+
+  heroInicio.classList.add("hidden");
+  internalContainer.classList.remove("hidden");
+
+  internalContainer.querySelectorAll(".view-section").forEach((seccion) => {
+    seccion.classList.add("hidden");
+  });
+
+  const seccionActiva = document.getElementById(idVista);
+  if (seccionActiva) seccionActiva.classList.remove("hidden");
 
   if (idVista === "view-dashboard") renderizarDashboard();
   else if (idVista === "view-obras") renderizarModuloObras();
@@ -308,7 +324,7 @@ async function renderizarDashboard() {
 }
 
 // ============================================================================
-// 3. VISTA 2: OBRAS Y PRESUPUESTOS (Conectado a /api/obras y /api/presupuestos)
+// 3. VISTA 2: OBRAS Y PRESUPUESTOS
 // ============================================================================
 async function renderizarModuloObras() {
   const mount = document.getElementById("obras-mount");
@@ -331,7 +347,6 @@ async function renderizarModuloObras() {
   mount.innerHTML = `
     ${esCliente ? "" : `
     <div class="grid-2">
-      <!-- FORMULARIO NUEVA OBRA -->
       <div class="card">
         <h3>Registrar Nueva Obra</h3>
         <div id="obra-feedback"></div>
@@ -396,7 +411,6 @@ async function renderizarModuloObras() {
         </form>
       </div>
 
-      <!-- FORMULARIO NUEVO PRESUPUESTO -->
       <div class="card">
         <h3>Asignar Presupuesto a Obra</h3>
         <p class="text-muted" style="margin-bottom: 1rem;">
@@ -582,7 +596,7 @@ async function cargarTablasObrasYPresupuestos() {
 }
 
 // ============================================================================
-// 4. VISTA 3: GASTOS (Registro + Aprobación / Rechazo con validación de saldo)
+// 4. VISTA 3: GASTOS
 // ============================================================================
 async function renderizarModuloGastos() {
   const mount = document.getElementById("gastos-mount");
@@ -735,7 +749,7 @@ async function cargarTablaGastos() {
 }
 
 // ============================================================================
-// 5. VISTA 4: INGRESOS (Conectado a /api/ingresos)
+// 5. VISTA 4: INGRESOS
 // ============================================================================
 async function renderizarModuloIngresos() {
   const mount = document.getElementById("ingresos-mount");
