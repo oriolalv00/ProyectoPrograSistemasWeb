@@ -59,11 +59,4 @@ public class CuentaBancaria {
         this.isActiva = isActiva;
     }
 
-    public <E> List<E> getSaldoActual() {
-        return null;
-    }
-
-    public void setSaldoActual(boolean add) {
-        
-    }
 }

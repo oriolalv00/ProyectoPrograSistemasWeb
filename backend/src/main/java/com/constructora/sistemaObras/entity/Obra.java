@@ -34,9 +34,8 @@ public class Obra {
     @Column(name = "municipio", nullable = false, length = 100)
     private String municipio;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false)
-    private EstadoObra estado;
+    @Column(name = "estado", nullable = false, length = 50)
+    private String estado = "Aguascalientes";
 
     @Column(name = "codigo_postal", nullable = false, length = 10)
     private String codigoPostal;
@@ -118,11 +117,9 @@ public class Obra {
         this.municipio = municipio;
     }
 
-    public EstadoObra getEstado() { return estado; }
+    public String getEstado() { return estado; }
 
-    public void setEstado(EstadoObra estado) {
-        this.estado = estado;
-    }
+    public void setEstado(String estado) { this.estado = estado; }
 
     public String getCodigoPostal() {
         return codigoPostal;
@@ -148,11 +145,7 @@ public class Obra {
         this.fechaFinEstimada = fechaFinEstimada;
     }
 
-    public EstadoObra getEstatus() {
-        return estatus;
-    }
+    public EstadoObra getEstatus() { return estatus; }
 
-    public void setEstatus(EstadoObra estatus) {
-        this.estatus = estatus;
-    }
+    public void setEstatus(EstadoObra estatus) { this.estatus = estatus; }
 }
