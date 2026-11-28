@@ -1,8 +1,7 @@
 package com.constructora.sistemaObras.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
-import java.util.List;
 
 @Entity
 @Table(name = "cuenta_bancaria")
@@ -19,14 +18,13 @@ public class CuentaBancaria {
     @Column(name = "numero_cuenta", nullable = false, unique = true, length = 20)
     private String numeroCuenta;
 
+    @JsonProperty("isActivo")
     @Column(name = "is_activa", nullable = false)
     private Boolean isActiva = true;
 
-    // --- Constructor vacío exigido por JPA ---
     public CuentaBancaria() {
     }
 
-    // --- Getters y Setters ---
     public Integer getIdCuenta() {
         return idCuenta;
     }
@@ -51,12 +49,13 @@ public class CuentaBancaria {
         this.numeroCuenta = numeroCuenta;
     }
 
+    @JsonProperty("isActivo")
     public Boolean getIsActiva() {
         return isActiva;
     }
 
+    @JsonProperty("isActivo")
     public void setIsActiva(Boolean isActiva) {
         this.isActiva = isActiva;
     }
-
 }

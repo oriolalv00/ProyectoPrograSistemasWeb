@@ -50,7 +50,9 @@ public class IngresoService {
 
         ingreso.setPresupuesto(presupuesto);
         ingreso.setCuentaBancaria(cuenta);
-        ingreso.setEstatus(EstatusIngreso.PENDIENTE);
+        if (ingreso.getEstatus() == null) {
+            ingreso.setEstatus(EstatusIngreso.PENDIENTE);
+        }
         return ingresoRepository.save(ingreso);
     }
 
@@ -62,7 +64,16 @@ public class IngresoService {
         return ingresoRepository.save(ingreso);
     }
 
-    public Object actualizarEstatus(Integer id, String estatus) {
-        return null;
+    @Transactional
+    public Ingreso actualizarEstatus(Integer id, String estatus) {
+        if (estatus == null || estatus.isBlank()) {
+            throw new IllegalArgumentException("El estatus del ingreso es obligatorio.");
+        }
+        try {
+            EstatusIngreso nuevoEstatus = EstatusIngreso.valueOf(estatus.trim().toUpperCase());
+            return cambiarEstatus(id, nuevoEstatus);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Estatus de ingreso inválido: " + estatus);
+        }
     }
 }

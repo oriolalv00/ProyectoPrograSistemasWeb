@@ -2,9 +2,8 @@ package com.constructora.sistemaObras.service;
 
 import com.constructora.sistemaObras.entity.CuentaBancaria;
 import com.constructora.sistemaObras.repository.CuentaBancariaRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,22 +17,25 @@ public class CuentaBancariaService {
     }
 
     public List<CuentaBancaria> listarTodas() {
-        return cuentaBancariaRepository.findAll();
+        return cuentaBancariaRepository.findByIsActivaTrue();
     }
 
+    @Transactional
     public CuentaBancaria guardar(CuentaBancaria cuenta) {
-        if (cuenta == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Los datos de la cuenta son obligatorios.");
+        if (cuenta == null || cuenta.getNombreBanco() == null || cuenta.getNombreBanco().isBlank()) {
+            throw new IllegalArgumentException("El nombre del banco es obligatorio.");
+        }
+        if (cuenta.getNumeroCuenta() == null || cuenta.getNumeroCuenta().isBlank()) {
+            throw new IllegalArgumentException("El número de cuenta es obligatorio.");
         }
 
-        if (cuenta.getNombreBanco() != null) {
-            cuenta.setNombreBanco(cuenta.getNombreBanco().trim());
+        String numeroLimpio = cuenta.getNumeroCuenta().trim();
+        if (cuentaBancariaRepository.existsByNumeroCuenta(numeroLimpio)) {
+            throw new IllegalStateException("Ya existe una cuenta registrada con ese número.");
         }
 
-        if (cuenta.getNumeroCuenta() != null) {
-            cuenta.setNumeroCuenta(cuenta.getNumeroCuenta().trim());
-        }
-
+        cuenta.setNombreBanco(cuenta.getNombreBanco().trim());
+        cuenta.setNumeroCuenta(numeroLimpio);
         if (cuenta.getIsActiva() == null) {
             cuenta.setIsActiva(true);
         }

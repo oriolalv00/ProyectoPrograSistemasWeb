@@ -13,7 +13,7 @@ public class Presupuesto {
     @Column(name = "id_presupuesto")
     private Integer idPresupuesto;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_obra", nullable = false)
     private Obra obra;
 

@@ -6,6 +6,7 @@ import com.constructora.sistemaObras.repository.RolRepository;
 import com.constructora.sistemaObras.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -44,22 +45,40 @@ public class UsuarioService {
     }
 
     public List<Usuario> listarTodos() {
-        return usuarioRepository.findAll();
+        return usuarioRepository.findByIsActivoTrue();
     }
 
+    @Transactional
     public Usuario guardar(Usuario usuario) {
-        if (usuario.getRol() != null && usuario.getRol().getIdRol() != null) {
-            Rol rol = rolRepository.findById(usuario.getRol().getIdRol())
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST, "El rol especificado no existe."
-                    ));
-            usuario.setRol(rol);
+        if (usuario == null || usuario.getRol() == null || usuario.getRol().getIdRol() == null) {
+            throw new IllegalArgumentException("El rol del usuario es obligatorio.");
         }
 
-        if (usuario.getRfc() != null) {
-            usuario.setRfc(usuario.getRfc().trim().toUpperCase());
+        Rol rol = rolRepository.findById(usuario.getRol().getIdRol())
+                .orElseThrow(() -> new IllegalArgumentException("El rol especificado no existe."));
+
+        if (usuario.getCorreo() == null || usuario.getCorreo().isBlank()) {
+            throw new IllegalArgumentException("El correo electrónico es obligatorio.");
+        }
+        String correoLimpio = usuario.getCorreo().trim();
+        if (usuarioRepository.existsByCorreoIgnoreCase(correoLimpio)) {
+            throw new IllegalStateException("Ya existe un usuario registrado con ese correo.");
         }
 
+        if (usuario.getRfc() == null || usuario.getRfc().trim().length() != 13) {
+            throw new IllegalArgumentException("El RFC debe contener exactamente 13 caracteres.");
+        }
+        String rfcLimpio = usuario.getRfc().trim().toUpperCase();
+        if (usuarioRepository.existsByRfcIgnoreCase(rfcLimpio)) {
+            throw new IllegalStateException("Ya existe un usuario registrado con ese RFC.");
+        }
+
+        usuario.setRol(rol);
+        usuario.setCorreo(correoLimpio);
+        usuario.setRfc(rfcLimpio);
+        if (usuario.getPassword() == null || usuario.getPassword().isBlank()) {
+            usuario.setPassword("Constructora2026*");
+        }
         if (usuario.getActivo() == null) {
             usuario.setActivo(true);
         }

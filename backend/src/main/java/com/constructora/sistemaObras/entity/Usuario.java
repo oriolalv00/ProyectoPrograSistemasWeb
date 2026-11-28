@@ -1,5 +1,6 @@
 package com.constructora.sistemaObras.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 @Entity
@@ -12,7 +13,7 @@ public class Usuario {
     private Integer idUsuario;
 
     // Muchos usuarios pueden tener un mismo Rol (ManyToOne)
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_rol", nullable = false)
     private Rol rol;
 
@@ -34,9 +35,11 @@ public class Usuario {
     @Column(name = "correo", nullable = false, unique = true, length = 150)
     private String correo;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
+    @JsonProperty("isActivo")
     @Column(name = "is_activo", nullable = false)
     private Boolean isActivo = true;
 
@@ -117,11 +120,9 @@ public class Usuario {
         this.password = password;
     }
 
-    public Boolean getActivo() {
-        return isActivo;
-    }
+    @JsonProperty("isActivo")
+    public Boolean getActivo() { return isActivo; }
 
-    public void setActivo(Boolean activo) {
-        isActivo = activo;
-    }
+    @JsonProperty("isActivo")
+    public void setActivo(Boolean activo) { isActivo = activo; }
 }
