@@ -1,11 +1,3 @@
-/**
- * ============================================================================
- * ARCHIVO: frontend/js/app.js
- * PROPÓSITO: Controlador principal SPA con Login en barra superior, portada
- * corporativa unificada, navegación por rol y detección automática de banco.
- * ============================================================================
- */
-
 import { apiService } from "./apiService.js";
 
 let usuarioActual = null;
@@ -57,6 +49,22 @@ function formatearMoneda(valor) {
   });
 }
 
+function filtrarObrasPorUsuario(obras) {
+  if (!usuarioActual) return [];
+  if (usuarioActual.rol?.nombre === "CLIENTE") {
+    return obras.filter((o) => {
+      const idClienteObra = o.usuarioCliente?.idUsuario ?? o.idUsuarioCliente;
+      return Number(idClienteObra) === Number(usuarioActual.idUsuario);
+    });
+  }
+  return obras;
+}
+
+function obtenerNombreUsuario(u) {
+  const nombres = [u.nombre1, u.nombre2].filter(Boolean).join(" ") || u.nombre || "";
+  return `${nombres} ${u.apellidoPaterno || ""} ${u.apellidoMaterno || ""}`.trim();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   configurarNavegacion();
 
@@ -84,6 +92,13 @@ function renderizarLoginEnHeader() {
         placeholder="Correo corporativo o cliente..."
         required
       />
+      <input
+        type="password"
+        id="login-password"
+        class="header-login-input"
+        placeholder="Contraseña..."
+        style="min-width: 155px;"
+      />
       <button type="submit" id="btn-login-submit" class="btn btn-primary btn-sm">
         Iniciar Sesión
       </button>
@@ -103,6 +118,7 @@ function renderizarLoginEnHeader() {
     evento.preventDefault();
 
     const inputCorreo = document.getElementById("login-correo");
+    const inputPass = document.getElementById("login-password");
     const feedback = document.getElementById("login-feedback");
     const btnSubmit = document.getElementById("btn-login-submit");
 
@@ -116,7 +132,7 @@ function renderizarLoginEnHeader() {
       btnSubmit.textContent = "Entrando...";
       feedback.textContent = "";
 
-      const usuario = await apiService.login(inputCorreo.value);
+      const usuario = await apiService.login(inputCorreo.value, inputPass.value);
       usuarioActual = usuario;
       sessionStorage.setItem("constructora_usuario", JSON.stringify(usuario));
 
@@ -137,19 +153,16 @@ function renderizarLoginEnHeader() {
 }
 
 function iniciarInterfazAutenticada() {
-  // 1. Reemplazamos el formulario del header por el perfil del usuario activo
   const authArea = document.getElementById("header-auth-area");
   authArea.innerHTML = `
     <div class="header-session-bar">
-      <span class="session-user-tag">${usuarioActual.nombre} ${usuarioActual.apellidoPaterno}</span>
+      <span class="session-user-tag">${obtenerNombreUsuario(usuarioActual)}</span>
       <span class="session-role-pill">${usuarioActual.rol.nombre}</span>
       <button type="button" id="btn-logout" class="btn btn-primary btn-sm">Cerrar Sesión</button>
     </div>
   `;
 
   document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
-
-  // 2. Mostramos la barra de navegación superior y filtramos pestañas según el Rol
   document.getElementById("main-nav").classList.remove("hidden");
 
   const rolNombre = usuarioActual.rol.nombre;
@@ -165,12 +178,11 @@ function iniciarInterfazAutenticada() {
     }
   });
 
-  // 3. Mostramos mensaje de bienvenida en la portada y abrimos la página de Inicio
   const welcomeBanner = document.getElementById("hero-welcome-banner");
   welcomeBanner.classList.remove("hidden");
   welcomeBanner.innerHTML = `
     <div>
-      <strong>Bienvenido, ${usuarioActual.nombre} ${usuarioActual.apellidoPaterno}</strong>
+      <strong>Bienvenido, ${obtenerNombreUsuario(usuarioActual)}</strong>
       <div style="font-size: 0.85rem; color: #cbd5e1;">
         Sesión activa como <span class="text-amber">${rolNombre}</span>. Selecciona un módulo en la barra superior para operar.
       </div>
@@ -232,43 +244,52 @@ function cambiarVista(idVista) {
 }
 
 // ============================================================================
-// 2. VISTA 1: TABLERO GENERAL (KPIs Y RESUMEN POR OBRA)
+// 2. VISTA 1: TABLERO GENERAL
 // ============================================================================
 async function renderizarDashboard() {
   const mount = document.getElementById("dashboard-mount");
   mount.innerHTML = `<p class="text-muted">Cargando indicadores financieros...</p>`;
 
-  const [obras, presupuestos, gastos, ingresos] = await Promise.all([
+  const [obrasRaw, presupuestos, gastos, ingresos] = await Promise.all([
     apiService.getObras(),
     apiService.getPresupuestos(),
     apiService.getGastos(),
     apiService.getIngresos()
   ]);
 
-  const totalPresupuestado = presupuestos.reduce((acc, p) => acc + Number(p.montoTotal || 0), 0);
-  const totalEjercido = gastos
+  const obras = filtrarObrasPorUsuario(obrasRaw);
+  const idsObrasVisibles = new Set(obras.map((o) => Number(o.idObra)));
+
+  const presupuestosVisibles = presupuestos.filter((p) => idsObrasVisibles.has(Number(p.obra?.idObra)));
+  const idsPresVisibles = new Set(presupuestosVisibles.map((p) => Number(p.idPresupuesto)));
+
+  const gastosVisibles = gastos.filter((g) => idsPresVisibles.has(Number(g.presupuesto?.idPresupuesto)));
+  const ingresosVisibles = ingresos.filter((i) => idsPresVisibles.has(Number(i.presupuesto?.idPresupuesto)));
+
+  const totalPresupuestado = presupuestosVisibles.reduce((acc, p) => acc + Number(p.montoTotal || 0), 0);
+  const totalEjercido = gastosVisibles
       .filter((g) => g.estatusAprobacion === "APROBADO")
       .reduce((acc, g) => acc + Number(g.monto || 0), 0);
-  const totalIngresos = ingresos
-      .filter((i) => ["CONFIRMADO", "CONCILIADO"].includes(i.estatus))
+  const totalIngresos = ingresosVisibles
+      .filter((i) => i.estatus === "CONCILIADO")
       .reduce((acc, i) => acc + Number(i.monto || 0), 0);
   const disponible = totalPresupuestado - totalEjercido;
 
   const filasResumen = obras
       .map((o) => {
-        const pres = presupuestos.find((p) => p.obra?.idObra === o.idObra);
+        const pres = presupuestosVisibles.find((p) => Number(p.obra?.idObra) === Number(o.idObra));
         const ejercidoObra = pres
-            ? gastos
-                .filter((g) => g.presupuesto?.idPresupuesto === pres.idPresupuesto && g.estatusAprobacion === "APROBADO")
+            ? gastosVisibles
+                .filter((g) => Number(g.presupuesto?.idPresupuesto) === Number(pres.idPresupuesto) && g.estatusAprobacion === "APROBADO")
                 .reduce((acc, g) => acc + Number(g.monto || 0), 0)
             : 0;
         const saldoObra = pres ? Number(pres.montoTotal) - ejercidoObra : 0;
-        const estadoObra = o.estado || o.estatus || "ACTIVA";
+        const estatusOperativo = o.estatus || "ACTIVA";
 
         return `
         <tr>
-          <td><strong>${o.nombre}</strong></td>
-          <td><span class="badge badge-${estadoObra}">${estadoObra}</span></td>
+          <td><strong>${o.nombre}</strong><br><span class="text-muted">${o.ciudad}, ${o.estado || "Aguascalientes"}</span></td>
+          <td><span class="badge badge-${estatusOperativo}">${estatusOperativo}</span></td>
           <td>${pres ? formatearMoneda(pres.montoTotal) : "Sin presupuesto"}</td>
           <td>${formatearMoneda(ejercidoObra)}</td>
           <td><strong>${pres ? formatearMoneda(saldoObra) : "—"}</strong></td>
@@ -280,7 +301,7 @@ async function renderizarDashboard() {
   mount.innerHTML = `
     <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-label">Obras Registradas</div>
+        <div class="kpi-label">Obras Visibles</div>
         <div class="kpi-value">${obras.length}</div>
       </div>
       <div class="kpi-card">
@@ -296,7 +317,7 @@ async function renderizarDashboard() {
         <div class="kpi-value">${formatearMoneda(disponible)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Ingresos Confirmados</div>
+        <div class="kpi-label">Ingresos Conciliados</div>
         <div class="kpi-value">${formatearMoneda(totalIngresos)}</div>
       </div>
     </div>
@@ -307,15 +328,15 @@ async function renderizarDashboard() {
         <table class="data-table">
           <thead>
             <tr>
-              <th>Obra</th>
-              <th>Estado</th>
+              <th>Obra / Ubicación</th>
+              <th>Estatus</th>
               <th>Presupuesto Asignado</th>
               <th>Ejercido (Aprobado)</th>
               <th>Saldo Disponible</th>
             </tr>
           </thead>
           <tbody>
-            ${filasResumen || `<tr><td colspan="5" class="text-muted">No hay obras registradas.</td></tr>`}
+            ${filasResumen || `<tr><td colspan="5" class="text-muted">No hay obras asignadas para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -330,14 +351,16 @@ async function renderizarModuloObras() {
   const mount = document.getElementById("obras-mount");
   const esCliente = usuarioActual.rol.nombre === "CLIENTE";
 
-  const [usuarios, obras] = await Promise.all([
+  const [usuarios, obrasRaw] = await Promise.all([
     apiService.getUsuarios(),
     apiService.getObras()
   ]);
 
+  const obras = filtrarObrasPorUsuario(obrasRaw);
   const clientes = usuarios.filter((u) => u.rol?.nombre === "CLIENTE");
+
   const opcionesClientes = clientes
-      .map((c) => `<option value="${c.idUsuario}">${c.nombre} ${c.apellidoPaterno} (${c.rfc})</option>`)
+      .map((c) => `<option value="${c.idUsuario}">${obtenerNombreUsuario(c)} (${c.rfc})</option>`)
       .join("");
 
   const opcionesObras = obras
@@ -398,6 +421,23 @@ async function renderizarModuloObras() {
 
           <div class="grid-2" style="gap: 0.75rem;">
             <div class="form-group">
+              <label for="obra-estado-ubicacion">Estado (Entidad) <span class="required-mark">*</span></label>
+              <input type="text" id="obra-estado-ubicacion" class="form-control" value="Aguascalientes" required />
+            </div>
+            <div class="form-group">
+              <label for="obra-estatus-operativo">Estatus Operativo <span class="required-mark">*</span></label>
+              <select id="obra-estatus-operativo" class="form-control">
+                <option value="ACTIVA" selected>ACTIVA</option>
+                <option value="EN_PLANIFICACION">EN_PLANIFICACION</option>
+                <option value="PAUSADA">PAUSADA</option>
+                <option value="TERMINADA">TERMINADA</option>
+                <option value="CANCELADA">CANCELADA</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
               <label for="obra-inicio">Fecha Inicio <span class="required-mark">*</span></label>
               <input type="date" id="obra-inicio" class="form-control" required />
             </div>
@@ -439,9 +479,8 @@ async function renderizarModuloObras() {
           <div class="form-group">
             <label for="pres-estatus">Estatus Inicial</label>
             <select id="pres-estatus" class="form-control">
-              <option value="VIGENTE" selected>VIGENTE</option>
+              <option value="APROBADO" selected>APROBADO</option>
               <option value="BORRADOR">BORRADOR</option>
-              <option value="APROBADO">APROBADO</option>
             </select>
           </div>
 
@@ -478,6 +517,8 @@ async function renderizarModuloObras() {
           codigoPostal: document.getElementById("obra-cp").value,
           ciudad: document.getElementById("obra-ciudad").value,
           municipio: document.getElementById("obra-municipio").value,
+          estado: document.getElementById("obra-estado-ubicacion").value,
+          estatus: document.getElementById("obra-estatus-operativo").value,
           fechaInicio: document.getElementById("obra-inicio").value,
           fechaFinEstimada: document.getElementById("obra-fin").value
         });
@@ -512,30 +553,33 @@ async function renderizarModuloObras() {
 }
 
 async function cargarTablasObrasYPresupuestos() {
-  const [obras, presupuestos] = await Promise.all([
+  const [obrasRaw, presupuestos] = await Promise.all([
     apiService.getObras(),
     apiService.getPresupuestos()
   ]);
 
+  const obras = filtrarObrasPorUsuario(obrasRaw);
+  const idsObrasVisibles = new Set(obras.map((o) => Number(o.idObra)));
+  const presupuestosVisibles = presupuestos.filter((p) => idsObrasVisibles.has(Number(p.obra?.idObra)));
   const esCliente = usuarioActual.rol.nombre === "CLIENTE";
 
   const filasObras = obras
       .map((o) => {
-        const estadoActual = o.estado || o.estatus || "ACTIVA";
+        const estatusOperativo = o.estatus || "ACTIVA";
         return `
         <tr>
           <td>#${o.idObra}</td>
-          <td><strong>${o.nombre}</strong><br><span class="text-muted">${o.ciudad}, ${o.municipio}</span></td>
+          <td><strong>${o.nombre}</strong><br><span class="text-muted">${o.ciudad}, ${o.municipio}, ${o.estado || "Aguascalientes"}</span></td>
           <td>${o.fechaInicio} &rarr; ${o.fechaFinEstimada}</td>
-          <td><span class="badge badge-${estadoActual}">${estadoActual}</span></td>
+          <td><span class="badge badge-${estatusOperativo}">${estatusOperativo}</span></td>
           ${esCliente ? "" : `
           <td>
             <select class="form-control select-estado-obra" data-id="${o.idObra}" style="padding: 0.3rem; font-size: 0.82rem;">
-              <option value="ACTIVA" ${estadoActual === "ACTIVA" ? "selected" : ""}>ACTIVA</option>
-              <option value="EN_PLANIFICACION" ${estadoActual === "EN_PLANIFICACION" ? "selected" : ""}>EN_PLANIFICACION</option>
-              <option value="PAUSADA" ${estadoActual === "PAUSADA" ? "selected" : ""}>PAUSADA</option>
-              <option value="TERMINADA" ${estadoActual === "TERMINADA" ? "selected" : ""}>TERMINADA</option>
-              <option value="CANCELADA" ${estadoActual === "CANCELADA" ? "selected" : ""}>CANCELADA</option>
+              <option value="ACTIVA" ${estatusOperativo === "ACTIVA" ? "selected" : ""}>ACTIVA</option>
+              <option value="EN_PLANIFICACION" ${estatusOperativo === "EN_PLANIFICACION" ? "selected" : ""}>EN_PLANIFICACION</option>
+              <option value="PAUSADA" ${estatusOperativo === "PAUSADA" ? "selected" : ""}>PAUSADA</option>
+              <option value="TERMINADA" ${estatusOperativo === "TERMINADA" ? "selected" : ""}>TERMINADA</option>
+              <option value="CANCELADA" ${estatusOperativo === "CANCELADA" ? "selected" : ""}>CANCELADA</option>
             </select>
           </td>`}
         </tr>
@@ -550,11 +594,11 @@ async function cargarTablasObrasYPresupuestos() {
           <th>ID</th>
           <th>Obra / Ubicación</th>
           <th>Periodo</th>
-          <th>Estado</th>
-          ${esCliente ? "" : "<th>Cambiar Estado</th>"}
+          <th>Estatus</th>
+          ${esCliente ? "" : "<th>Cambiar Estatus</th>"}
         </tr>
       </thead>
-      <tbody>${filasObras || `<tr><td colspan="5" class="text-muted">Sin obras registradas.</td></tr>`}</tbody>
+      <tbody>${filasObras || `<tr><td colspan="5" class="text-muted">Sin obras asignadas.</td></tr>`}</tbody>
     </table>
   `;
 
@@ -565,7 +609,7 @@ async function cargarTablasObrasYPresupuestos() {
     });
   });
 
-  const filasPres = presupuestos
+  const filasPres = presupuestosVisibles
       .map(
           (p) => `
       <tr>
@@ -726,7 +770,7 @@ async function cargarTablaGastos() {
       accionFeedback.innerHTML = "";
       try {
         await apiService.aprobarGasto(btn.dataset.id);
-        accionFeedback.innerHTML = `<div class="alert alert-success">Gasto #${btn.dataset.id} aprobado y descontado del saldo disponible.</div>`;
+        accionFeedback.innerHTML = `<div class="alert alert-success">Gasto #${btn.dataset.id} aprobado.</div>`;
         await cargarTablaGastos();
       } catch (error) {
         accionFeedback.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
@@ -763,7 +807,10 @@ async function renderizarModuloIngresos() {
       .join("");
 
   const opcionesCuentas = cuentas
-      .map((c) => `<option value="${c.idCuenta}">${c.banco} (${c.numeroCuenta})</option>`)
+      .map((c) => {
+        const bancoLabel = c.nombreBanco || c.banco;
+        return `<option value="${c.idCuenta}">${bancoLabel} (${c.numeroCuenta})</option>`;
+      })
       .join("");
 
   mount.innerHTML = `
@@ -804,7 +851,7 @@ async function renderizarModuloIngresos() {
         <div class="form-group">
           <label for="ing-estatus">Estatus</label>
           <select id="ing-estatus" class="form-control">
-            <option value="CONFIRMADO" selected>CONFIRMADO</option>
+            <option value="CONCILIADO" selected>CONCILIADO</option>
             <option value="PENDIENTE">PENDIENTE</option>
           </select>
         </div>
@@ -851,19 +898,20 @@ async function cargarTablaIngresos() {
   const ingresos = await apiService.getIngresos();
 
   const filas = ingresos
-      .map(
-          (i) => `
-      <tr>
-        <td>#${i.idIngreso}</td>
-        <td><strong>${i.presupuesto?.obra?.nombre || "Presupuesto #" + i.presupuesto?.idPresupuesto}</strong></td>
-        <td>${i.cuentaBancaria?.banco || "Cuenta #" + i.cuentaBancaria?.idCuenta}</td>
-        <td><strong>${formatearMoneda(i.monto)}</strong></td>
-        <td>${i.fechaDeposito}</td>
-        <td>${i.referencia || "—"}</td>
-        <td><span class="badge badge-${i.estatus}">${i.estatus}</span></td>
-      </tr>
-    `
-      )
+      .map((i) => {
+        const bancoNombre = i.cuentaBancaria?.nombreBanco || i.cuentaBancaria?.banco || "Cuenta #" + i.cuentaBancaria?.idCuenta;
+        return `
+        <tr>
+          <td>#${i.idIngreso}</td>
+          <td><strong>${i.presupuesto?.obra?.nombre || "Presupuesto #" + i.presupuesto?.idPresupuesto}</strong></td>
+          <td>${bancoNombre}</td>
+          <td><strong>${formatearMoneda(i.monto)}</strong></td>
+          <td>${i.fechaDeposito}</td>
+          <td>${i.referencia || "—"}</td>
+          <td><span class="badge badge-${i.estatus}">${i.estatus}</span></td>
+        </tr>
+      `;
+      })
       .join("");
 
   document.getElementById("tabla-ingresos-container").innerHTML = `
@@ -906,19 +954,28 @@ async function renderizarModuloAdmin() {
             </select>
           </div>
 
-          <div class="form-group">
-            <label for="usr-nombre">Nombre(s) <span class="required-mark">*</span></label>
-            <input type="text" id="usr-nombre" class="form-control" maxlength="100" required />
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label for="usr-nombre1">Primer Nombre <span class="required-mark">*</span></label>
+              <input type="text" id="usr-nombre1" class="form-control" maxlength="100" required />
+            </div>
+
+            <div class="form-group">
+              <label for="usr-nombre2">Segundo Nombre (Opcional)</label>
+              <input type="text" id="usr-nombre2" class="form-control" maxlength="100" />
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="usr-paterno">Apellido Paterno <span class="required-mark">*</span></label>
-            <input type="text" id="usr-paterno" class="form-control" maxlength="100" required />
-          </div>
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label for="usr-paterno">Apellido Paterno <span class="required-mark">*</span></label>
+              <input type="text" id="usr-paterno" class="form-control" maxlength="100" required />
+            </div>
 
-          <div class="form-group">
-            <label for="usr-materno">Apellido Materno (Opcional)</label>
-            <input type="text" id="usr-materno" class="form-control" maxlength="100" />
+            <div class="form-group">
+              <label for="usr-materno">Apellido Materno (Opcional)</label>
+              <input type="text" id="usr-materno" class="form-control" maxlength="100" />
+            </div>
           </div>
 
           <div class="form-group">
@@ -927,22 +984,29 @@ async function renderizarModuloAdmin() {
           </div>
 
           <div class="form-group">
-            <label for="usr-rfc">RFC (13 caracteres exactos) <span class="required-mark">*</span></label>
-            <input
-              type="text"
-              id="usr-rfc"
-              class="form-control"
-              maxlength="13"
-              minlength="13"
-              placeholder="EJ. HETA060115AB1"
-              style="text-transform: uppercase;"
-              required
-            />
+            <label for="usr-password">Contraseña <span class="required-mark">*</span></label>
+            <input type="password" id="usr-password" class="form-control" minlength="4" required />
           </div>
 
-          <div class="form-group">
-            <label for="usr-telefono">Teléfono (Opcional)</label>
-            <input type="tel" id="usr-telefono" class="form-control" maxlength="20" placeholder="4491234567" />
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label for="usr-rfc">RFC (13 caracteres) <span class="required-mark">*</span></label>
+              <input
+                type="text"
+                id="usr-rfc"
+                class="form-control"
+                maxlength="13"
+                minlength="13"
+                placeholder="HETA060115AB1"
+                style="text-transform: uppercase;"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="usr-telefono">Teléfono (Opcional)</label>
+              <input type="tel" id="usr-telefono" class="form-control" maxlength="20" placeholder="4491234567" />
+            </div>
           </div>
 
           <button type="submit" class="btn btn-primary">Guardar Usuario</button>
@@ -958,7 +1022,7 @@ async function renderizarModuloAdmin() {
 
         <form id="form-nueva-cuenta" novalidate>
           <div class="form-group">
-            <label for="cta-banco">Institución Bancaria <span class="required-mark">*</span></label>
+            <label for="cta-banco">Institución Bancaria (nombreBanco) <span class="required-mark">*</span></label>
             <input type="text" id="cta-banco" class="form-control" placeholder="Se detecta con los primeros 3 dígitos de la CLABE" required />
           </div>
 
@@ -1019,10 +1083,12 @@ function configurarFormularioUsuario() {
     try {
       await apiService.crearUsuario({
         idRol: document.getElementById("usr-rol").value,
-        nombre: document.getElementById("usr-nombre").value,
+        nombre1: document.getElementById("usr-nombre1").value,
+        nombre2: document.getElementById("usr-nombre2").value,
         apellidoPaterno: document.getElementById("usr-paterno").value,
         apellidoMaterno: document.getElementById("usr-materno").value,
         correo: document.getElementById("usr-correo").value,
+        password: document.getElementById("usr-password").value,
         rfc: rfcValor,
         telefono: document.getElementById("usr-telefono").value
       });
@@ -1068,7 +1134,7 @@ function configurarFormularioCuenta() {
 
     try {
       await apiService.crearCuentaBancaria({
-        banco: inputBanco.value,
+        nombreBanco: inputBanco.value,
         numeroCuenta: document.getElementById("cta-numero").value,
         clabe: clabeValor,
         titular: document.getElementById("cta-titular").value
@@ -1091,7 +1157,7 @@ async function cargarTablaUsuarios() {
           (u) => `
       <tr>
         <td>#${u.idUsuario}</td>
-        <td><strong>${u.nombre} ${u.apellidoPaterno} ${u.apellidoMaterno || ""}</strong></td>
+        <td><strong>${obtenerNombreUsuario(u)}</strong></td>
         <td><span class="badge badge-BORRADOR">${u.rol.nombre}</span></td>
         <td>${u.rfc}</td>
         <td>${u.correo}</td>
@@ -1123,18 +1189,19 @@ async function cargarTablaCuentas() {
   const cuentas = await apiService.getCuentasBancarias();
 
   const filasHtml = cuentas
-      .map(
-          (c) => `
-      <tr>
-        <td>#${c.idCuenta}</td>
-        <td><strong>${c.banco}</strong></td>
-        <td>${c.numeroCuenta}</td>
-        <td><code>${c.clabe}</code></td>
-        <td>${c.titular}</td>
-        <td><span class="badge ${c.isActivo ? "badge-ACTIVA" : "badge-CANCELADA"}">${c.isActivo ? "ACTIVA" : "INACTIVA"}</span></td>
-      </tr>
-    `
-      )
+      .map((c) => {
+        const bancoNombre = c.nombreBanco || c.banco;
+        return `
+        <tr>
+          <td>#${c.idCuenta}</td>
+          <td><strong>${bancoNombre}</strong></td>
+          <td>${c.numeroCuenta}</td>
+          <td><code>${c.clabe}</code></td>
+          <td>${c.titular}</td>
+          <td><span class="badge ${c.isActivo ? "badge-ACTIVA" : "badge-CANCELADA"}">${c.isActivo ? "ACTIVA" : "INACTIVA"}</span></td>
+        </tr>
+      `;
+      })
       .join("");
 
   container.innerHTML = `
