@@ -16,27 +16,30 @@ public class CuentaBancariaService {
         this.cuentaBancariaRepository = cuentaBancariaRepository;
     }
 
-    public List<CuentaBancaria> listarActivas() {
+    public List<CuentaBancaria> listarTodas() {
         return cuentaBancariaRepository.findByIsActivaTrue();
     }
 
     @Transactional
-    public CuentaBancaria registrarCuenta(CuentaBancaria cuenta) {
-        if (cuenta.getNombreBanco() == null || cuenta.getNombreBanco().isBlank()) {
+    public CuentaBancaria guardar(CuentaBancaria cuenta) {
+        if (cuenta == null || cuenta.getNombreBanco() == null || cuenta.getNombreBanco().isBlank()) {
             throw new IllegalArgumentException("El nombre del banco es obligatorio.");
         }
         if (cuenta.getNumeroCuenta() == null || cuenta.getNumeroCuenta().isBlank()) {
             throw new IllegalArgumentException("El número de cuenta es obligatorio.");
         }
-        if (cuentaBancariaRepository.existsByNumeroCuenta(cuenta.getNumeroCuenta().trim())) {
+
+        String numeroLimpio = cuenta.getNumeroCuenta().trim();
+        if (cuentaBancariaRepository.existsByNumeroCuenta(numeroLimpio)) {
             throw new IllegalStateException("Ya existe una cuenta registrada con ese número.");
         }
 
         cuenta.setNombreBanco(cuenta.getNombreBanco().trim());
-        cuenta.setNumeroCuenta(cuenta.getNumeroCuenta().trim());
+        cuenta.setNumeroCuenta(numeroLimpio);
         if (cuenta.getIsActiva() == null) {
             cuenta.setIsActiva(true);
         }
+
         return cuentaBancariaRepository.save(cuenta);
     }
 }

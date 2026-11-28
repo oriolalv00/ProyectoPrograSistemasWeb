@@ -4,8 +4,10 @@ import com.constructora.sistemaObras.entity.Rol;
 import com.constructora.sistemaObras.entity.Usuario;
 import com.constructora.sistemaObras.repository.RolRepository;
 import com.constructora.sistemaObras.repository.UsuarioRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -20,46 +22,60 @@ public class UsuarioService {
         this.rolRepository = rolRepository;
     }
 
-    public List<Usuario> listarActivos() {
-        return usuarioRepository.findByActivoTrue();
-    }
-
-    public Usuario autenticarPorCorreo(String correo) {
+    public Usuario autenticar(String correo, String password) {
         if (correo == null || correo.isBlank()) {
-            throw new IllegalArgumentException("Debes ingresar un correo electrónico.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El correo es obligatorio.");
         }
 
-        Usuario usuario = usuarioRepository.findByCorreo(correo.trim())
-                .orElseThrow(() -> new IllegalArgumentException("No existe ningún usuario registrado con ese correo."));
+        Usuario usuario = usuarioRepository.findByCorreoIgnoreCase(correo.trim())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "No existe ningún usuario con ese correo."
+                ));
 
-        if (!Boolean.TRUE.equals(usuario.getActivo())) {
-            throw new IllegalStateException("Esta cuenta de usuario se encuentra desactivada.");
+        if (Boolean.FALSE.equals(usuario.getActivo())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El usuario está inactivo.");
+        }
+
+        if (password != null && !password.isBlank() && usuario.getPassword() != null
+                && !usuario.getPassword().equals(password)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Contraseña incorrecta.");
         }
 
         return usuario;
     }
 
+    public List<Usuario> listarTodos() {
+        return usuarioRepository.findByIsActivoTrue();
+    }
+
     @Transactional
-    public Usuario registrarUsuario(Integer idRol, Usuario usuario) {
-        Rol rol = rolRepository.findById(idRol)
-                .orElseThrow(() -> new IllegalArgumentException("Rol no encontrado con ID: " + idRol));
+    public Usuario guardar(Usuario usuario) {
+        if (usuario == null || usuario.getRol() == null || usuario.getRol().getIdRol() == null) {
+            throw new IllegalArgumentException("El rol del usuario es obligatorio.");
+        }
+
+        Rol rol = rolRepository.findById(usuario.getRol().getIdRol())
+                .orElseThrow(() -> new IllegalArgumentException("El rol especificado no existe."));
 
         if (usuario.getCorreo() == null || usuario.getCorreo().isBlank()) {
             throw new IllegalArgumentException("El correo electrónico es obligatorio.");
         }
-        if (usuarioRepository.existsByCorreo(usuario.getCorreo().trim())) {
+        String correoLimpio = usuario.getCorreo().trim();
+        if (usuarioRepository.existsByCorreoIgnoreCase(correoLimpio)) {
             throw new IllegalStateException("Ya existe un usuario registrado con ese correo.");
         }
+
         if (usuario.getRfc() == null || usuario.getRfc().trim().length() != 13) {
             throw new IllegalArgumentException("El RFC debe contener exactamente 13 caracteres.");
         }
-        if (usuarioRepository.existsByRfc(usuario.getRfc().trim().toUpperCase())) {
+        String rfcLimpio = usuario.getRfc().trim().toUpperCase();
+        if (usuarioRepository.existsByRfcIgnoreCase(rfcLimpio)) {
             throw new IllegalStateException("Ya existe un usuario registrado con ese RFC.");
         }
 
         usuario.setRol(rol);
-        usuario.setRfc(usuario.getRfc().trim().toUpperCase());
-        usuario.setCorreo(usuario.getCorreo().trim());
+        usuario.setCorreo(correoLimpio);
+        usuario.setRfc(rfcLimpio);
         if (usuario.getPassword() == null || usuario.getPassword().isBlank()) {
             usuario.setPassword("Constructora2026*");
         }

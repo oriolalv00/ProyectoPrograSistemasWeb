@@ -1,14 +1,3 @@
-/**
- * ============================================================================
- * ARCHIVO: frontend/js/apiService.js
- * PROPÓSITO: Capa de comunicación híbrida.
- * - Intenta conectar primero con Spring Boot (http://localhost:8080/api)
- *   para Obras, Presupuestos, Gastos e Ingresos.
- * - Si el servidor está apagado o el endpoint aún no existe (Usuarios, Roles,
- *   Cuentas Bancarias), responde automáticamente usando mockDB.
- * ============================================================================
- */
-
 import { mockDB } from "./mockData.js";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -17,7 +6,7 @@ function simularPeticionHttp(data) {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve(structuredClone(data));
-    }, 150);
+    }, 120);
   });
 }
 
@@ -48,21 +37,34 @@ async function fetchBackend(endpoint, options = {}) {
 
 export const apiService = {
   // ==========================================================================
-  // 1. AUTENTICACIÓN Y USUARIOS (Respaldado por mockDB hasta que exista endpoint)
+  // 1. AUTENTICACIÓN Y USUARIOS -> /api/auth/login y /api/usuarios
   // ==========================================================================
-  async login(correo) {
-    const usuarioEncontrado = mockDB.usuarios.find(
-        (u) => u.correo.toLowerCase() === correo.trim().toLowerCase()
-    );
-
-    if (!usuarioEncontrado) {
-      throw new Error("No existe ningún usuario registrado con ese correo.");
-    }
-    if (!usuarioEncontrado.isActivo) {
-      throw new Error("Esta cuenta de usuario se encuentra desactivada.");
+  async login(correo, password = "") {
+    if (!correo || !correo.trim()) {
+      throw new Error("Ingresa tu correo electrónico.");
     }
 
-    return simularPeticionHttp(usuarioEncontrado);
+    try {
+      return await fetchBackend("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ correo: correo.trim(), password })
+      });
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
+
+      const usuarioEncontrado = mockDB.usuarios.find(
+          (u) => u.correo.toLowerCase() === correo.trim().toLowerCase()
+      );
+      if (!usuarioEncontrado) {
+        throw new Error("No existe ningún usuario registrado con ese correo.");
+      }
+      if (usuarioEncontrado.isActivo === false) {
+        throw new Error("Esta cuenta de usuario se encuentra desactivada.");
+      }
+      return simularPeticionHttp(usuarioEncontrado);
+    }
   },
 
   async getUsuarios() {
@@ -74,8 +76,8 @@ export const apiService = {
   },
 
   async crearUsuario(datosUsuario) {
-    if (!datosUsuario.nombre || !datosUsuario.apellidoPaterno || !datosUsuario.correo) {
-      throw new Error("Nombre, apellido paterno y correo son obligatorios.");
+    if (!datosUsuario.nombre1 || !datosUsuario.apellidoPaterno || !datosUsuario.correo || !datosUsuario.password) {
+      throw new Error("Primer nombre, apellido paterno, correo y contraseña son obligatorios.");
     }
     if (!datosUsuario.rfc || datosUsuario.rfc.trim().length !== 13) {
       throw new Error("El RFC debe tener exactamente 13 caracteres.");
@@ -86,13 +88,18 @@ export const apiService = {
       throw new Error("Debes seleccionar un rol válido.");
     }
 
-    const nuevoUsuario = {
-      idUsuario: Date.now(),
+    const nombre1 = datosUsuario.nombre1.trim();
+    const nombre2 = datosUsuario.nombre2 ? datosUsuario.nombre2.trim() : null;
+
+    const payloadUsuario = {
       rol: { idRol: rolObj.idRol, nombre: rolObj.nombre },
-      nombre: datosUsuario.nombre.trim(),
+      nombre1,
+      nombre2,
+      nombre: [nombre1, nombre2].filter(Boolean).join(" "),
       apellidoPaterno: datosUsuario.apellidoPaterno.trim(),
       apellidoMaterno: datosUsuario.apellidoMaterno ? datosUsuario.apellidoMaterno.trim() : null,
       correo: datosUsuario.correo.trim(),
+      password: datosUsuario.password,
       rfc: datosUsuario.rfc.trim().toUpperCase(),
       telefono: datosUsuario.telefono ? datosUsuario.telefono.trim() : null,
       isActivo: true
@@ -101,16 +108,20 @@ export const apiService = {
     try {
       return await fetchBackend("/usuarios", {
         method: "POST",
-        body: JSON.stringify(nuevoUsuario)
+        body: JSON.stringify(payloadUsuario)
       });
-    } catch (_) {
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
+      const nuevoUsuario = { ...payloadUsuario, idUsuario: Date.now() };
       mockDB.usuarios.push(nuevoUsuario);
       return simularPeticionHttp(nuevoUsuario);
     }
   },
 
   // ==========================================================================
-  // 2. CUENTAS BANCARIAS
+  // 2. CUENTAS BANCARIAS -> /api/cuentas-bancarias
   // ==========================================================================
   async getCuentasBancarias() {
     try {
@@ -121,16 +132,17 @@ export const apiService = {
   },
 
   async crearCuentaBancaria(datosCuenta) {
-    if (!datosCuenta.banco || !datosCuenta.numeroCuenta || !datosCuenta.clabe || !datosCuenta.titular) {
+    const nombreBanco = (datosCuenta.nombreBanco || datosCuenta.banco || "").trim();
+    if (!nombreBanco || !datosCuenta.numeroCuenta || !datosCuenta.clabe || !datosCuenta.titular) {
       throw new Error("Todos los datos de la cuenta bancaria son obligatorios.");
     }
     if (datosCuenta.clabe.trim().length !== 18) {
       throw new Error("La CLABE interbancaria debe contener exactamente 18 dígitos.");
     }
 
-    const nuevaCuenta = {
-      idCuenta: Date.now(),
-      banco: datosCuenta.banco.trim(),
+    const payloadCuenta = {
+      nombreBanco,
+      banco: nombreBanco,
       numeroCuenta: datosCuenta.numeroCuenta.trim(),
       clabe: datosCuenta.clabe.trim(),
       titular: datosCuenta.titular.trim(),
@@ -141,16 +153,20 @@ export const apiService = {
     try {
       return await fetchBackend("/cuentas-bancarias", {
         method: "POST",
-        body: JSON.stringify(nuevaCuenta)
+        body: JSON.stringify(payloadCuenta)
       });
-    } catch (_) {
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
+      const nuevaCuenta = { ...payloadCuenta, idCuenta: Date.now() };
       mockDB.cuentasBancarias.push(nuevaCuenta);
       return simularPeticionHttp(nuevaCuenta);
     }
   },
 
   // ==========================================================================
-  // 3. OBRAS -> GET /api/obras | POST /api/obras | PATCH /api/obras/{id}/estado
+  // 3. OBRAS -> /api/obras (estado = ubicación/entidad federativa; estatus = estado operativo)
   // ==========================================================================
   async getObras() {
     try {
@@ -161,9 +177,11 @@ export const apiService = {
   },
 
   async crearObra(datosObra) {
-    if (!datosObra.nombre || !datosObra.descripcion || !datosObra.calleNumero ||
+    if (
+        !datosObra.nombre || !datosObra.descripcion || !datosObra.calleNumero ||
         !datosObra.ciudad || !datosObra.municipio || !datosObra.codigoPostal ||
-        !datosObra.fechaInicio || !datosObra.fechaFinEstimada) {
+        !datosObra.fechaInicio || !datosObra.fechaFinEstimada
+    ) {
       throw new Error("Completa todos los campos obligatorios de la obra.");
     }
 
@@ -183,7 +201,8 @@ export const apiService = {
       coloniaCoto: datosObra.coloniaCoto ? datosObra.coloniaCoto.trim() : null,
       ciudad: datosObra.ciudad.trim(),
       municipio: datosObra.municipio.trim(),
-      estado: datosObra.estado || "ACTIVA",
+      estado: (datosObra.estado || "Aguascalientes").trim(),
+      estatus: datosObra.estatus || "ACTIVA",
       codigoPostal: datosObra.codigoPostal.trim(),
       fechaInicio: datosObra.fechaInicio,
       fechaFinEstimada: datosObra.fechaFinEstimada
@@ -194,32 +213,43 @@ export const apiService = {
         method: "POST",
         body: JSON.stringify(payloadBackend)
       });
-    } catch (_) {
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
       const nuevaObraMock = {
         ...payloadBackend,
         idObra: Date.now(),
-        usuarioCliente: cliente || { idUsuario: 3, nombre: "Cliente", apellidoPaterno: "Demo", rfc: "XAXX010101000" }
+        usuarioCliente: cliente || {
+          idUsuario: Number(datosObra.idUsuarioCliente) || 3,
+          nombre: "Cliente",
+          apellidoPaterno: "Demo",
+          rfc: "XAXX010101000"
+        }
       };
       mockDB.obras.push(nuevaObraMock);
       return simularPeticionHttp(nuevaObraMock);
     }
   },
 
-  async actualizarEstatusObra(idObra, nuevoEstado) {
+  async actualizarEstatusObra(idObra, nuevoEstatus) {
     try {
-      return await fetchBackend(`/obras/${idObra}/estado?estado=${encodeURIComponent(nuevoEstado)}`, {
+      return await fetchBackend(`/obras/${idObra}/estado?estado=${encodeURIComponent(nuevoEstatus)}`, {
         method: "PATCH"
       });
-    } catch (_) {
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
       const obra = mockDB.obras.find((o) => o.idObra === Number(idObra));
       if (!obra) throw new Error("Obra no encontrada.");
-      obra.estado = nuevoEstado;
+      obra.estatus = nuevoEstatus;
       return simularPeticionHttp(obra);
     }
   },
 
   // ==========================================================================
-  // 4. PRESUPUESTOS -> GET /api/presupuestos | POST /api/presupuestos/obra/{id}
+  // 4. PRESUPUESTOS -> /api/presupuestos (estatus: APROBADO | BORRADOR)
   // ==========================================================================
   async getPresupuestos() {
     try {
@@ -232,6 +262,9 @@ export const apiService = {
   async crearPresupuesto(datosPresupuesto) {
     const idObraNum = Number(datosPresupuesto.idObra);
     const montoNum = Number(datosPresupuesto.montoTotal);
+    const estatusValido = ["APROBADO", "BORRADOR"].includes(datosPresupuesto.estatus)
+        ? datosPresupuesto.estatus
+        : "APROBADO";
 
     if (!idObraNum) {
       throw new Error("Selecciona una obra válida.");
@@ -243,7 +276,7 @@ export const apiService = {
     const payloadBackend = {
       montoTotal: montoNum,
       fechaAprobacion: datosPresupuesto.fechaAprobacion || new Date().toISOString().split("T")[0],
-      estatus: datosPresupuesto.estatus || "VIGENTE"
+      estatus: estatusValido
     };
 
     try {
@@ -252,7 +285,6 @@ export const apiService = {
         body: JSON.stringify(payloadBackend)
       });
     } catch (err) {
-      // Si el backend respondió con error de negocio real (400/500), lo propagamos
       if (!err.message.includes("Failed to fetch")) {
         throw err;
       }
@@ -276,8 +308,7 @@ export const apiService = {
   },
 
   // ==========================================================================
-  // 5. GASTOS -> GET /api/gastos | POST /api/gastos/presupuesto/{id}
-  //             PATCH /api/gastos/{id}/aprobar | PATCH /api/gastos/{id}/rechazar
+  // 5. GASTOS -> /api/gastos
   // ==========================================================================
   async getGastos() {
     try {
@@ -360,7 +391,7 @@ export const apiService = {
   },
 
   // ==========================================================================
-  // 6. INGRESOS -> GET /api/ingresos | POST /api/ingresos?idPresupuesto=&idCuenta=
+  // 6. INGRESOS -> /api/ingresos (estatus: CONCILIADO | PENDIENTE)
   // ==========================================================================
   async getIngresos() {
     try {
@@ -374,6 +405,7 @@ export const apiService = {
     const idPresupuestoNum = Number(datosIngreso.idPresupuesto);
     const idCuentaNum = Number(datosIngreso.idCuenta);
     const montoNum = Number(datosIngreso.monto);
+    const estatusIngreso = datosIngreso.estatus === "PENDIENTE" ? "PENDIENTE" : "CONCILIADO";
 
     if (!datosIngreso.fechaDeposito) {
       throw new Error("La fecha de depósito es obligatoria.");
@@ -386,7 +418,7 @@ export const apiService = {
       monto: montoNum,
       fechaDeposito: datosIngreso.fechaDeposito,
       referencia: datosIngreso.referencia ? datosIngreso.referencia.trim() : null,
-      estatus: datosIngreso.estatus || "CONFIRMADO"
+      estatus: estatusIngreso
     };
 
     try {
@@ -412,13 +444,30 @@ export const apiService = {
         },
         cuentaBancaria: {
           idCuenta: cuenta.idCuenta,
-          banco: cuenta.banco,
+          nombreBanco: cuenta.nombreBanco || cuenta.banco,
+          banco: cuenta.nombreBanco || cuenta.banco,
           numeroCuenta: cuenta.numeroCuenta
         },
         ...payloadBackend
       };
       mockDB.ingresos.push(nuevoIngreso);
       return simularPeticionHttp(nuevoIngreso);
+    }
+  },
+
+  async actualizarEstatusIngreso(idIngreso, nuevoEstatus) {
+    try {
+      return await fetchBackend(`/ingresos/${idIngreso}/estatus?estatus=${encodeURIComponent(nuevoEstatus)}`, {
+        method: "PATCH"
+      });
+    } catch (err) {
+      if (!err.message.includes("Failed to fetch")) {
+        throw err;
+      }
+      const ingreso = mockDB.ingresos.find((i) => i.idIngreso === Number(idIngreso));
+      if (!ingreso) throw new Error("Ingreso no encontrado.");
+      ingreso.estatus = nuevoEstatus;
+      return simularPeticionHttp(ingreso);
     }
   }
 };
