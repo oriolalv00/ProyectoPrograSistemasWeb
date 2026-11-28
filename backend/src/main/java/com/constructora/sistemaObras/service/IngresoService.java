@@ -61,4 +61,8 @@ public class IngresoService {
         ingreso.setEstatus(nuevoEstatus);
         return ingresoRepository.save(ingreso);
     }
+
+    public Object actualizarEstatus(Integer id, String estatus) {
+        return null;
+    }
 }
