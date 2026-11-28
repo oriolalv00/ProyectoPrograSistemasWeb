@@ -35,10 +35,16 @@ public class PresupuestoService {
                 .orElseThrow(() -> new RuntimeException("Presupuesto no encontrado con ID: " + id));
     }
 
+
+
     @Transactional
     public Presupuesto crearPresupuesto(Integer idObra, Presupuesto presupuesto) {
         Obra obra = obraRepository.findById(idObra)
                 .orElseThrow(() -> new RuntimeException("Obra no encontrada con ID: " + idObra));
+
+        if (!presupuestoRepository.findByObraIdObra(idObra).isEmpty()) {
+            throw new IllegalStateException("Esta obra ya cuenta con un presupuesto asignado (relación 1 a 1).");
+        }
 
         if (presupuesto.getMontoTotal() == null || presupuesto.getMontoTotal().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El monto total del presupuesto debe ser mayor a cero.");

@@ -12,7 +12,7 @@ public class Obra {
     @Column(name = "id_obra")
     private Integer idObra;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_usuario_cliente", nullable = false)
     private Usuario usuarioCliente;
 
